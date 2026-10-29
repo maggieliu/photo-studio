@@ -1,28 +1,137 @@
-.check {
-  padding: 24px 16px;
+.library {
+  padding: 16px;
   text-align: left;
-  max-width: 520px;
-  margin: 0 auto;
+  flex: 1;
 }
 
-.check ul {
+.library header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.library h1 {
+  font-size: 28px;
+  margin: 0;
+}
+
+.library button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: var(--text-h);
+  background: var(--bg);
+}
+
+.library button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.library button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.library button.danger {
+  color: #d32f2f;
+  border-color: #d32f2f;
+}
+
+.error {
+  color: #d32f2f;
+  font-size: 14px;
+}
+
+.empty {
+  margin: 48px 0;
+  text-align: center;
+}
+
+.grid {
   list-style: none;
   padding: 0;
   margin: 16px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 6px;
 }
 
-.check li {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
+.grid button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  aspect-ratio: 1;
 }
 
-.summary {
+.grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.detail {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(92vw, 420px);
+  max-height: 90svh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.detail img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.detail dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  font-size: 14px;
+}
+
+.detail dt {
   color: var(--text-h);
-  font-weight: 500;
+}
+
+.detail dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.library footer {
+  margin-top: 24px;
+  font-size: 13px;
+}
+
+.library footer ul {
+  list-style: none;
+  padding: 0;
 }
 
 .ua {
-  margin-top: 24px;
   font-size: 12px;
   word-break: break-all;
 }
