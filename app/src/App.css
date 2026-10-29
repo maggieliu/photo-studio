@@ -1,0 +1,28 @@
+.check {
+  padding: 24px 16px;
+  text-align: left;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.check ul {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+
+.check li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.summary {
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.ua {
+  margin-top: 24px;
+  font-size: 12px;
+  word-break: break-all;
+}
