@@ -15,7 +15,7 @@ async function makeThumbnail(bitmap: ImageBitmap): Promise<Blob> {
   )
 }
 
-export async function importPhoto(file: File, catalog: Catalog): Promise<PhotoRecord> {
+export async function importPhoto(file: File, catalog: Catalog, albumId?: string): Promise<PhotoRecord> {
   let bitmap: ImageBitmap
   try {
     bitmap = await createImageBitmap(file)
@@ -39,6 +39,10 @@ export async function importPhoto(file: File, catalog: Catalog): Promise<PhotoRe
       width: bitmap.width,
       height: bitmap.height,
       thumb: await makeThumbnail(bitmap),
+      rating: 0,
+      favorite: false,
+      tags: [],
+      albumIds: albumId ? [albumId] : [],
     }
     await catalog.add(photo, file)
     return photo
@@ -53,12 +57,13 @@ export async function importPhotos(
   files: File[],
   catalog: Catalog,
   onProgress?: (done: number, total: number) => void,
+  albumId?: string,
 ): Promise<ImportSummary> {
   const errors: string[] = []
   let imported = 0
   for (const [i, file] of files.entries()) {
     try {
-      await importPhoto(file, catalog)
+      await importPhoto(file, catalog, albumId)
       imported++
     } catch (e) {
       errors.push(e instanceof Error ? e.message : `${file.name}: import failed`)

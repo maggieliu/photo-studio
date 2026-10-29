@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { openCatalog, type Catalog, type PhotoRecord } from './catalog'
+import { openCatalog, type AlbumRecord, type Catalog, type PhotoRecord } from './catalog'
 import { importPhotos } from './importPhoto'
 
 export type LibraryPhoto = PhotoRecord & { thumbUrl: string }
@@ -9,6 +9,7 @@ const withUrl = (p: PhotoRecord): LibraryPhoto => ({ ...p, thumbUrl: URL.createO
 export function useLibrary() {
   const catalogRef = useRef<Catalog | null>(null)
   const [photos, setPhotos] = useState<LibraryPhoto[]>([])
+  const [albums, setAlbums] = useState<AlbumRecord[]>([])
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string>()
   const [progress, setProgress] = useState<{ done: number; total: number }>()
@@ -17,7 +18,8 @@ export function useLibrary() {
   const refresh = useCallback(async () => {
     const catalog = catalogRef.current
     if (!catalog) return
-    const list = await catalog.list()
+    const [list, albumList] = await Promise.all([catalog.list(), catalog.listAlbums()])
+    setAlbums(albumList)
     setPhotos((old) => {
       old.forEach((p) => URL.revokeObjectURL(p.thumbUrl))
       return list.map(withUrl)
@@ -44,13 +46,13 @@ export function useLibrary() {
   }, [refresh])
 
   const importFiles = useCallback(
-    async (files: File[]) => {
+    async (files: File[], albumId?: string) => {
       const catalog = catalogRef.current
       if (!catalog || files.length === 0) return
       setImportErrors([])
       setProgress({ done: 0, total: files.length })
       try {
-        const summary = await importPhotos(files, catalog, (done, total) => setProgress({ done, total }))
+        const summary = await importPhotos(files, catalog, (done, total) => setProgress({ done, total }), albumId)
         setImportErrors(summary.errors)
       } finally {
         setProgress(undefined)
@@ -60,13 +62,61 @@ export function useLibrary() {
     [refresh],
   )
 
-  const remove = useCallback(
-    async (id: string) => {
-      await catalogRef.current?.remove(id)
+  const updatePhotos = useCallback(
+    async (ids: string[], change: (photo: PhotoRecord) => PhotoRecord) => {
+      await catalogRef.current?.update(ids, change)
       await refresh()
     },
     [refresh],
   )
 
-  return { photos, ready, error, progress, importErrors, importFiles, remove }
+  const removePhotos = useCallback(
+    async (ids: string[]) => {
+      for (const id of ids) await catalogRef.current?.remove(id)
+      await refresh()
+    },
+    [refresh],
+  )
+
+  const createAlbum = useCallback(
+    async (name: string) => {
+      if (!name.trim()) return undefined
+      const album = await catalogRef.current?.createAlbum(name)
+      await refresh()
+      return album
+    },
+    [refresh],
+  )
+
+  const renameAlbum = useCallback(
+    async (id: string, name: string) => {
+      if (!name.trim()) return
+      await catalogRef.current?.renameAlbum(id, name)
+      await refresh()
+    },
+    [refresh],
+  )
+
+  const deleteAlbum = useCallback(
+    async (id: string) => {
+      await catalogRef.current?.deleteAlbum(id)
+      await refresh()
+    },
+    [refresh],
+  )
+
+  return {
+    photos,
+    albums,
+    ready,
+    error,
+    progress,
+    importErrors,
+    importFiles,
+    updatePhotos,
+    removePhotos,
+    createAlbum,
+    renameAlbum,
+    deleteAlbum,
+  }
 }
