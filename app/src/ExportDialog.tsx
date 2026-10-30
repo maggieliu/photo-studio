@@ -93,6 +93,11 @@ export function ExportDialog({ items, getOriginal, onClose }: Props) {
   const files = run?.files.map((f) => f.file) ?? []
   const canShare = phase === 'done' && canShareFiles(files)
   const totalSize = files.reduce((sum, f) => sum + f.size, 0)
+  // On a phone the share sheet is the way to save, and downloads are unreliable
+  // in in-app browsers. If a share fails, downloads come back as a fallback.
+  const isPhone = useMemo(() => window.matchMedia?.('(pointer: coarse)').matches ?? false, [])
+  const [shareFailed, setShareFailed] = useState(false)
+  const showDownload = !(isPhone && canShare) || shareFailed
 
   // Sharing needs a fresh tap, which is why this is a separate step after rendering.
   const share = async () => {
@@ -100,7 +105,8 @@ export function ExportDialog({ items, getOriginal, onClose }: Props) {
     try {
       await shareFiles(files)
     } catch {
-      setNotice('Sharing did not work here. Try Download instead.')
+      setShareFailed(true)
+      setNotice('Sharing did not work here. Use Download, or View and copy the image.')
     }
   }
 
@@ -272,14 +278,14 @@ export function ExportDialog({ items, getOriginal, onClose }: Props) {
               <button type="button" onClick={() => setPhase('options')}>
                 Back
               </button>
-              {files.length > 0 && (
+              {files.length > 0 && showDownload && (
                 <button type="button" onClick={download} disabled={busy}>
                   {files.length === 1 ? 'Download' : busy ? 'Zipping…' : 'Download .zip'}
                 </button>
               )}
               {files.length > 0 && (
                 <button type="button" className={canShare ? undefined : 'primary'} onClick={() => setViewing(0)}>
-                  View &amp; save
+                  {canShare ? 'View' : 'View & save'}
                 </button>
               )}
               {canShare && (
