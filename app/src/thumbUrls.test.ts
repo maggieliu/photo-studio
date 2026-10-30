@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ThumbUrlCache } from './thumbUrls'
 
 const setup = () => {
@@ -30,6 +30,18 @@ describe('ThumbUrlCache', () => {
     cache.get('b', new Blob())
     cache.prune(['b'])
     expect(revoked).toEqual([a])
+  })
+
+  it('replace hands out a new url and revokes the old one later', () => {
+    vi.useFakeTimers()
+    const { cache, revoked } = setup()
+    const old = cache.get('a', new Blob())
+    cache.replace('a', 1000)
+    expect(cache.get('a', new Blob())).not.toBe(old)
+    expect(revoked).toEqual([])
+    vi.advanceTimersByTime(1000)
+    expect(revoked).toEqual([old])
+    vi.useRealTimers()
   })
 
   it('clear revokes everything', () => {

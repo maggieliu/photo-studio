@@ -325,3 +325,163 @@
 .detail .actions {
   justify-content: space-between;
 }
+
+/* Editor */
+.editor {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: #111;
+  color: #ddd;
+  color-scheme: dark;
+  text-align: left;
+}
+
+.editor button {
+  font: inherit;
+  color: inherit;
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.editor button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.editor button[aria-pressed='true'] {
+  background: #3b2a55;
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.editor-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+}
+
+.editor-nav,
+.editor-history {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.editor-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 28vw;
+  font-size: 13px;
+}
+
+.editor-stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.editor-stage canvas {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 2px;
+  touch-action: none;
+}
+
+.editor-stage canvas.hidden {
+  display: none;
+}
+
+.editor .compare {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  font-size: 13px;
+  padding: 6px 10px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+
+.editor-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 0;
+  overflow-x: auto;
+}
+
+.editor-tabs button {
+  white-space: nowrap;
+}
+
+.editor-panel {
+  padding: 8px 16px calc(12px + env(safe-area-inset-bottom));
+  max-height: 38svh;
+  overflow-y: auto;
+}
+
+.slider {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0 8px;
+  padding: 4px 0;
+  font-size: 14px;
+}
+
+.slider .slider-label {
+  justify-self: start;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+}
+
+.slider output {
+  min-width: 3ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.slider input {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: var(--accent);
+  padding: 0;
+  margin: 0;
+  touch-action: pan-y;
+}
+
+.editor .chips {
+  margin: 4px 0 8px;
+}
+
+.row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.hint {
+  font-size: 13px;
+  margin: 4px 0 8px;
+}
+
+.editor .reset-all {
+  margin-top: 8px;
+  width: 100%;
+}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { detectInBrowser } from './capabilities'
 import { addTag, emptyFilter, filterPhotos, isFiltering, tagCounts, type Filter } from './filter'
+import { Editor } from './Editor'
 import { PhotoDetail } from './PhotoDetail'
 import { useLibrary } from './useLibrary'
 import './App.css'
@@ -15,6 +16,7 @@ function App() {
   const { photos, albums, ready, error, progress, importErrors } = lib
   const [filter, setFilter] = useState<Filter>(emptyFilter)
   const [selectedId, setSelectedId] = useState<string>()
+  const [editingId, setEditingId] = useState<string>()
   const [selecting, setSelecting] = useState(false)
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [bulkTag, setBulkTag] = useState('')
@@ -30,6 +32,12 @@ function App() {
     [photos, filter, activeAlbum?.id],
   )
   const detailPhoto = photos.find((p) => p.id === selectedId)
+  const editingPhoto = photos.find((p) => p.id === editingId)
+  const editingIndex = visible.findIndex((p) => p.id === editingId)
+  const neighbor = (offset: number) => {
+    const target = visible[editingIndex + offset]
+    return editingIndex >= 0 && target ? () => setEditingId(target.id) : undefined
+  }
   const set = (patch: Partial<Filter>) => setFilter((f) => ({ ...f, ...patch }))
 
   useEffect(() => {
@@ -221,10 +229,11 @@ function App() {
               aria-pressed={selecting ? checked.has(p.id) : undefined}
             >
               <img src={p.thumbUrl} alt={p.name} loading="lazy" />
-              {(p.favorite || p.rating > 0) && (
+              {(p.favorite || p.rating > 0 || p.edits) && (
                 <span className="badge">
                   {p.favorite ? '♥' : ''}
                   {p.rating > 0 ? `${p.rating}★` : ''}
+                  {p.edits ? '✎' : ''}
                 </span>
               )}
               {selecting && <span className="tick">{checked.has(p.id) ? '✓' : ''}</span>}
@@ -315,7 +324,23 @@ function App() {
               setSelectedId(undefined)
             }
           }}
+          onEdit={() => {
+            setEditingId(detailPhoto.id)
+            setSelectedId(undefined)
+          }}
           onClose={() => setSelectedId(undefined)}
+        />
+      )}
+
+      {editingPhoto && (
+        <Editor
+          key={editingPhoto.id}
+          photo={editingPhoto}
+          getOriginal={lib.getOriginal}
+          onSave={(edits, thumb) => lib.saveEdits(editingPhoto.id, edits, thumb)}
+          onClose={() => setEditingId(undefined)}
+          onPrev={neighbor(-1)}
+          onNext={neighbor(1)}
         />
       )}
 

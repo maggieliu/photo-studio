@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
+import type { EditSettings } from './edits'
 
 export type PhotoRecord = {
   id: string
@@ -16,6 +17,8 @@ export type PhotoRecord = {
   favorite: boolean
   tags: string[]
   albumIds: string[]
+  /** Absent until the photo is edited. The original file is never changed. */
+  edits?: EditSettings
 }
 
 export type AlbumRecord = {

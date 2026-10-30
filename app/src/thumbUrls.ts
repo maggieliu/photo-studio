@@ -22,6 +22,17 @@ export class ThumbUrlCache {
     return url
   }
 
+  /**
+   * The photo's thumbnail changed: the next get() makes a new URL. The old one
+   * is revoked after a delay, because an <img> may still be showing it.
+   */
+  replace(id: string, revokeAfterMs = 5000) {
+    const url = this.urls.get(id)
+    if (!url) return
+    this.urls.delete(id)
+    setTimeout(() => this.revoke(url), revokeAfterMs)
+  }
+
   /** Release URLs for photos that are no longer in the library. */
   prune(keepIds: Iterable<string>) {
     const keep = new Set(keepIds)

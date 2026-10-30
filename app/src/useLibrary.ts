@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { openCatalog, type AlbumRecord, type Catalog, type PhotoRecord } from './catalog'
+import { isDefaultEdits, type EditSettings } from './edits'
 import { importPhotos } from './importPhoto'
 import { ThumbUrlCache } from './thumbUrls'
 
@@ -72,6 +73,21 @@ export function useLibrary() {
     [refresh],
   )
 
+  const getOriginal = useCallback((id: string) => catalogRef.current?.getOriginal(id) ?? Promise.resolve(undefined), [])
+
+  const saveEdits = useCallback(
+    async (id: string, edits: EditSettings, thumb: Blob) => {
+      await catalogRef.current?.update([id], (p) => ({
+        ...p,
+        edits: isDefaultEdits(edits) ? undefined : edits,
+        thumb,
+      }))
+      thumbUrls.current.replace(id)
+      await refresh()
+    },
+    [refresh],
+  )
+
   const removePhotos = useCallback(
     async (ids: string[]) => {
       for (const id of ids) await catalogRef.current?.remove(id)
@@ -116,6 +132,8 @@ export function useLibrary() {
     importErrors,
     importFiles,
     updatePhotos,
+    getOriginal,
+    saveEdits,
     removePhotos,
     createAlbum,
     renameAlbum,
