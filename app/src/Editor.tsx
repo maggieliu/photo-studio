@@ -43,18 +43,29 @@ type SliderRowProps = {
   min: number
   max: number
   step?: number
+  /** The value the reset button restores; the button only shows when it differs. */
+  resetValue?: number
   format?: (v: number) => string
   onChange: (v: number) => void
   onReset: () => void
 }
 
-function SliderRow({ label, value, min, max, step = 1, format, onChange, onReset }: SliderRowProps) {
+function SliderRow({ label, value, min, max, step = 1, resetValue = 0, format, onChange, onReset }: SliderRowProps) {
+  const pct = ((value - min) / (max - min)) * 100
   return (
     <div className="slider">
-      <button type="button" className="slider-label" onClick={onReset} title="Tap to reset">
-        {label}
-      </button>
+      <span className="slider-label">{label}</span>
       <output>{format ? format(value) : value}</output>
+      <button
+        type="button"
+        className="slider-reset"
+        onClick={onReset}
+        aria-label={`Reset ${label}`}
+        // Keeps its place in the grid so the row doesn't jump when it appears.
+        style={{ visibility: value === resetValue ? 'hidden' : 'visible' }}
+      >
+        ↺
+      </button>
       <input
         type="range"
         aria-label={label}
@@ -62,6 +73,7 @@ function SliderRow({ label, value, min, max, step = 1, format, onChange, onReset
         max={max}
         step={step}
         value={value}
+        style={{ '--pct': `${pct}%` } as React.CSSProperties}
         onChange={(e) => onChange(Number(e.target.value))}
       />
     </div>
@@ -147,11 +159,31 @@ export function Editor({ photo, getOriginal, onSave, onClose, onPrev, onNext }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one renderer per photo
   }, [photo.id])
 
-  // Debounced autosave; also save when the page is hidden (phones kill background tabs).
+  // Autosave after a pause, but never while a finger is on the screen: saving
+  // redraws the canvas and would hitch a slider drag in progress.
+  const touchingRef = useRef(false)
+  useEffect(() => {
+    const down = () => (touchingRef.current = true)
+    const up = () => (touchingRef.current = false)
+    window.addEventListener('pointerdown', down)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+    return () => {
+      window.removeEventListener('pointerdown', down)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+    }
+  }, [])
+
   useEffect(() => {
     if (edits === initialRef.current) return
     dirtyRef.current = true
-    const timer = setTimeout(() => persist(true), 800)
+    let timer: ReturnType<typeof setTimeout>
+    const trySave = () => {
+      if (touchingRef.current) timer = setTimeout(trySave, 500)
+      else persist(true)
+    }
+    timer = setTimeout(trySave, 1000)
     return () => clearTimeout(timer)
   }, [edits, persist])
 
@@ -291,6 +323,7 @@ export function Editor({ photo, getOriginal, onSave, onClose, onPrev, onNext }: 
               value={Math.round((crop?.zoom ?? 1) * 100)}
               min={10}
               max={100}
+              resetValue={100}
               format={(v) => `${v}%`}
               onChange={(v) => setCrop({ zoom: v / 100 }, 'crop-zoom')}
               onReset={() => setCrop({ zoom: 1 })}
@@ -302,6 +335,7 @@ export function Editor({ photo, getOriginal, onSave, onClose, onPrev, onNext }: 
                   value={Math.round(crop.px * 100)}
                   min={0}
                   max={100}
+                  resetValue={50}
                   onChange={(v) => setCrop({ px: v / 100 }, 'crop-px')}
                   onReset={() => setCrop({ px: 0.5 })}
                 />
@@ -310,6 +344,7 @@ export function Editor({ photo, getOriginal, onSave, onClose, onPrev, onNext }: 
                   value={Math.round(crop.py * 100)}
                   min={0}
                   max={100}
+                  resetValue={50}
                   onChange={(v) => setCrop({ py: v / 100 }, 'crop-py')}
                   onReset={() => setCrop({ py: 0.5 })}
                 />

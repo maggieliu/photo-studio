@@ -436,18 +436,11 @@
 
 .slider {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 0 8px;
-  padding: 4px 0;
+  padding: 2px 0 6px;
   font-size: 14px;
-}
-
-.slider .slider-label {
-  justify-self: start;
-  background: none;
-  border: 0;
-  padding: 4px 0;
 }
 
 .slider output {
@@ -456,13 +449,68 @@
   font-variant-numeric: tabular-nums;
 }
 
-.slider input {
+.editor .slider .slider-reset {
+  background: none;
+  border: 0;
+  padding: 2px 6px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/*
+ * A custom range: a tall touch area and a big thumb. touch-action: none stops
+ * the scrolling panel from stealing the drag when a finger drifts vertically.
+ */
+.editor .slider input[type='range'] {
   grid-column: 1 / -1;
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
-  accent-color: var(--accent);
-  padding: 0;
+  height: 44px;
   margin: 0;
-  touch-action: pan-y;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.slider input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--pct), #444 var(--pct));
+}
+
+.slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -12px;
+  border-radius: 50%;
+  border: 0;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+.slider input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: #444;
+}
+
+.slider input[type='range']::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.slider input[type='range']::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0;
+  background: #fff;
 }
 
 .editor .chips {
