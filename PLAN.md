@@ -31,7 +31,7 @@ A local-first web app for cataloging and editing photos, usable on phone and des
 | 1. Library (done) | Import, thumbnails, EXIF, grid view, persistent catalog. |
 | 2. Organize (done) | Albums, tags, ratings, favorites, search and filters. |
 | 3. Edit (done) | Photo view, shader pipeline, adjustment sliders, crop/rotate, undo/redo, before/after. |
-| 4. Export | Single and batch export, resize and quality options. |
+| 4. Export (done) | Single and batch export, resize and quality options. |
 | 5. Pi integration | Register the app, Pi sign-in, sandbox testing. |
 | 6. Polish | Mobile gestures, keyboard shortcuts, catalog backup, performance on large libraries. |
 | 7. Later | Presets, Pi payments, background removal, RAW via WebAssembly, cloud sync. |

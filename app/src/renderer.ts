@@ -95,6 +95,17 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string) {
   return shader
 }
 
+/** The browser gave the canvas a smaller drawing buffer than requested. */
+export class BufferLimitError extends Error {
+  constructor() {
+    super('This device cannot render an image that large')
+    this.name = 'BufferLimitError'
+  }
+}
+
+/** Sharpening is tuned on a preview of this size; bigger sources scale the radius to match. */
+const SHARPEN_REFERENCE_EDGE = 2048
+
 /** Draws one photo through the edit pipeline onto a canvas. */
 export class Renderer {
   readonly canvas: HTMLCanvasElement
@@ -116,6 +127,12 @@ export class Renderer {
     this.init()
     canvas.addEventListener('webglcontextlost', this.handleLost)
     canvas.addEventListener('webglcontextrestored', this.handleRestored)
+  }
+
+  /** Largest texture or render target edge this GPU supports. */
+  get maxTextureSize(): number {
+    const gl = this.gl
+    return Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE))
   }
 
   get sourceSize() {
@@ -195,7 +212,8 @@ export class Renderer {
     // mat3 is column-major.
     gl.uniformMatrix3fv(u.u_m ?? null, false, [a, b, 0, c, d, 0, e, f, 1])
     gl.uniform1i(u.u_tex ?? null, 0)
-    gl.uniform2f(u.u_texel ?? null, 1 / bitmap.width, 1 / bitmap.height)
+    const sharpenScale = Math.max(1, Math.max(bitmap.width, bitmap.height) / SHARPEN_REFERENCE_EDGE)
+    gl.uniform2f(u.u_texel ?? null, sharpenScale / bitmap.width, sharpenScale / bitmap.height)
     gl.uniform1f(u.u_exposure ?? null, edits.exposure / 100)
     gl.uniform1f(u.u_contrast ?? null, edits.contrast / 100)
     gl.uniform1f(u.u_highlights ?? null, edits.highlights / 100)
@@ -216,18 +234,26 @@ export class Renderer {
    * this returns, so the caller may render the preview again straight away.
    */
   toBlob(edits: EditSettings, maxEdge: number, type = 'image/jpeg', quality = 0.85): Promise<Blob> {
-    if (!this.render(edits, maxEdge)) return Promise.reject(new Error('Nothing to render'))
+    const size = this.render(edits, maxEdge)
+    if (!size) return Promise.reject(new Error('Nothing to render'))
+    if (this.gl.drawingBufferWidth < size.width || this.gl.drawingBufferHeight < size.height) {
+      return Promise.reject(new BufferLimitError())
+    }
     return new Promise((resolve, reject) =>
       this.canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Encoding failed'))), type, quality),
     )
   }
 
-  dispose() {
+  dispose(releaseGpu = false) {
     this.canvas.removeEventListener('webglcontextlost', this.handleLost)
     this.canvas.removeEventListener('webglcontextrestored', this.handleRestored)
     if (this.texture) this.gl.deleteTexture(this.texture)
     this.texture = null
     this.bitmap?.close()
     this.bitmap = null
+    // Phones allow only a few live GL contexts and hold their memory until
+    // collected. Only for canvases that are thrown away: a lost context cannot
+    // be reused by a new Renderer on the same canvas.
+    if (releaseGpu) this.gl.getExtension('WEBGL_lose_context')?.loseContext()
   }
 }

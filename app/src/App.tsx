@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { detectInBrowser } from './capabilities'
 import { addTag, emptyFilter, filterPhotos, isFiltering, tagCounts, type Filter } from './filter'
 import { Editor } from './Editor'
+import { ExportDialog } from './ExportDialog'
+import type { ExportItem } from './exportPhoto'
 import { PhotoDetail } from './PhotoDetail'
 import { useLibrary } from './useLibrary'
 import './App.css'
@@ -17,6 +19,7 @@ function App() {
   const [filter, setFilter] = useState<Filter>(emptyFilter)
   const [selectedId, setSelectedId] = useState<string>()
   const [editingId, setEditingId] = useState<string>()
+  const [exportItems, setExportItems] = useState<ExportItem[]>()
   const [selecting, setSelecting] = useState(false)
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [bulkTag, setBulkTag] = useState('')
@@ -297,6 +300,16 @@ function App() {
           )}
           <button
             type="button"
+            disabled={checked.size === 0}
+            onClick={() =>
+              // Export in the order shown on screen, not the order they were ticked.
+              setExportItems(visible.filter((p) => checked.has(p.id)).map((p) => ({ photo: p, edits: p.edits })))
+            }
+          >
+            Export
+          </button>
+          <button
+            type="button"
             className="danger"
             disabled={checked.size === 0}
             onClick={async () => {
@@ -328,6 +341,7 @@ function App() {
             setEditingId(detailPhoto.id)
             setSelectedId(undefined)
           }}
+          onExport={() => setExportItems([{ photo: detailPhoto, edits: detailPhoto.edits }])}
           onClose={() => setSelectedId(undefined)}
         />
       )}
@@ -339,10 +353,13 @@ function App() {
           getOriginal={lib.getOriginal}
           onSave={(edits, thumb) => lib.saveEdits(editingPhoto.id, edits, thumb)}
           onClose={() => setEditingId(undefined)}
+          onExport={(edits) => setExportItems([{ photo: editingPhoto, edits }])}
           onPrev={neighbor(-1)}
           onNext={neighbor(1)}
         />
       )}
+
+      {exportItems && <ExportDialog items={exportItems} getOriginal={lib.getOriginal} onClose={() => setExportItems(undefined)} />}
 
       <footer>
         <p>

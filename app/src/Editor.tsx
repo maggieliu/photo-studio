@@ -33,6 +33,8 @@ type Props = {
   getOriginal: (id: string) => Promise<Blob | undefined>
   onSave: (edits: EditSettings, thumb: Blob) => void | Promise<void>
   onClose: () => void
+  /** Called with the current edits, which may be newer than the saved ones. */
+  onExport: (edits: EditSettings) => void
   onPrev?: () => void
   onNext?: () => void
 }
@@ -80,7 +82,7 @@ function SliderRow({ label, value, min, max, step = 1, resetValue = 0, format, o
   )
 }
 
-export function Editor({ photo, getOriginal, onSave, onClose, onPrev, onNext }: Props) {
+export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, onNext }: Props) {
   const [hist, setHist] = useState(() => createHistory(normalizeEdits(photo.edits)))
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState<string>()
@@ -250,14 +252,9 @@ export function Editor({ photo, getOriginal, onSave, onClose, onPrev, onNext }: 
             ›
           </button>
         </div>
-        <div className="editor-history">
-          <button type="button" onClick={() => setHist(undo)} disabled={hist.past.length === 0} aria-label="Undo">
-            ↶
-          </button>
-          <button type="button" onClick={() => setHist(redo)} disabled={hist.future.length === 0} aria-label="Redo">
-            ↷
-          </button>
-        </div>
+        <button type="button" className="primary" onClick={() => onExport(edits)} disabled={status !== 'ready'}>
+          Export
+        </button>
       </header>
 
       <div className="editor-stage">
@@ -267,6 +264,16 @@ export function Editor({ photo, getOriginal, onSave, onClose, onPrev, onNext }: 
           <p role="alert" className="error">
             {error}
           </p>
+        )}
+        {status === 'ready' && (
+          <div className="editor-undo">
+            <button type="button" onClick={() => setHist(undo)} disabled={hist.past.length === 0} aria-label="Undo">
+              ↶
+            </button>
+            <button type="button" onClick={() => setHist(redo)} disabled={hist.future.length === 0} aria-label="Redo">
+              ↷
+            </button>
+          </div>
         )}
         {status === 'ready' && (
           <button

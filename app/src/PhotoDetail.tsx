@@ -12,6 +12,7 @@ type Props = {
   onCreateAlbum: (name: string) => Promise<AlbumRecord | undefined>
   onDelete: () => void
   onEdit: () => void
+  onExport: () => void
   onClose: () => void
 }
 
@@ -20,7 +21,7 @@ function formatBytes(n: number) {
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
 
-export function PhotoDetail({ photo, albums, knownTags, onChange, onCreateAlbum, onDelete, onEdit, onClose }: Props) {
+export function PhotoDetail({ photo, albums, knownTags, onChange, onCreateAlbum, onDelete, onEdit, onExport, onClose }: Props) {
   const [tagInput, setTagInput] = useState('')
   const [albumInput, setAlbumInput] = useState('')
 
@@ -151,6 +152,9 @@ export function PhotoDetail({ photo, albums, knownTags, onChange, onCreateAlbum,
         </button>
         <button type="button" onClick={onClose}>
           Close
+        </button>
+        <button type="button" onClick={onExport}>
+          Export
         </button>
         <button type="button" className="primary" onClick={onEdit}>
           Edit
