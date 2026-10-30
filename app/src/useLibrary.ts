@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { openCatalog, type AlbumRecord, type Catalog, type PhotoRecord } from './catalog'
 import { importPhotos } from './importPhoto'
+import { ThumbUrlCache } from './thumbUrls'
 
 export type LibraryPhoto = PhotoRecord & { thumbUrl: string }
 
-const withUrl = (p: PhotoRecord): LibraryPhoto => ({ ...p, thumbUrl: URL.createObjectURL(p.thumb) })
-
 export function useLibrary() {
   const catalogRef = useRef<Catalog | null>(null)
+  const thumbUrls = useRef(new ThumbUrlCache())
   const [photos, setPhotos] = useState<LibraryPhoto[]>([])
   const [albums, setAlbums] = useState<AlbumRecord[]>([])
   const [ready, setReady] = useState(false)
@@ -19,15 +19,16 @@ export function useLibrary() {
     const catalog = catalogRef.current
     if (!catalog) return
     const [list, albumList] = await Promise.all([catalog.list(), catalog.listAlbums()])
+    const cache = thumbUrls.current
+    const next = list.map((p) => ({ ...p, thumbUrl: cache.get(p.id, p.thumb) }))
+    cache.prune(list.map((p) => p.id))
     setAlbums(albumList)
-    setPhotos((old) => {
-      old.forEach((p) => URL.revokeObjectURL(p.thumbUrl))
-      return list.map(withUrl)
-    })
+    setPhotos(next)
   }, [])
 
   useEffect(() => {
     let cancelled = false
+    const cache = thumbUrls.current
     openCatalog()
       .then(async (catalog) => {
         if (cancelled) return catalog.close()
@@ -42,6 +43,7 @@ export function useLibrary() {
       cancelled = true
       catalogRef.current?.close()
       catalogRef.current = null
+      cache.clear()
     }
   }, [refresh])
 
