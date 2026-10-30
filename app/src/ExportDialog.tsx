@@ -43,14 +43,19 @@ export function ExportDialog({ items, getOriginal, onClose }: Props) {
   const [run, setRun] = useState<ExportRun>()
   const [notice, setNotice] = useState<string>()
   const [busy, setBusy] = useState(false)
+  const [viewing, setViewing] = useState<number>()
   const cancelRef = useRef(false)
   const aliveRef = useRef(true)
+  // Object URLs for the viewer, made once per run and released with the dialog.
+  const [urls, setUrls] = useState<string[]>([])
+  const urlsRef = useRef<string[]>([])
 
   useEffect(() => {
     aliveRef.current = true
     return () => {
       aliveRef.current = false
       cancelRef.current = true
+      urlsRef.current.forEach((u) => URL.revokeObjectURL(u))
     }
   }, [])
 
@@ -72,7 +77,11 @@ export function ExportDialog({ items, getOriginal, onClose }: Props) {
         isCancelled: () => cancelRef.current,
       })
       if (!aliveRef.current) return
+      urlsRef.current.forEach((u) => URL.revokeObjectURL(u))
+      urlsRef.current = result.files.map((f) => URL.createObjectURL(f.file))
+      setUrls(urlsRef.current)
       setRun(result)
+      setViewing(undefined)
       setPhase('done')
     } catch (e) {
       if (!aliveRef.current) return
@@ -200,7 +209,31 @@ export function ExportDialog({ items, getOriginal, onClose }: Props) {
           </>
         )}
 
-        {phase === 'done' && run && (
+        {phase === 'done' && run && viewing !== undefined && run.files[viewing] && (
+          <>
+            <p className="viewer-name">
+              {run.files[viewing].file.name} · {run.files[viewing].width}×{run.files[viewing].height}
+            </p>
+            <img className="viewer-image" src={urls[viewing]} alt={run.files[viewing].file.name} />
+            <p className="hint">
+              To save it, touch and hold the image, then choose “Save to Photos” (or “Add to Photos”). On a computer,
+              right-click and choose “Save image as”.
+            </p>
+            <div className="actions">
+              <button type="button" onClick={() => setViewing(viewing - 1)} disabled={viewing === 0}>
+                ‹ Previous
+              </button>
+              <button type="button" onClick={() => setViewing(viewing + 1)} disabled={viewing >= run.files.length - 1}>
+                Next ›
+              </button>
+              <button type="button" className="primary" onClick={() => setViewing(undefined)}>
+                Back
+              </button>
+            </div>
+          </>
+        )}
+
+        {phase === 'done' && run && viewing === undefined && (
           <>
             <p role="status">
               {files.length > 0
@@ -210,9 +243,11 @@ export function ExportDialog({ items, getOriginal, onClose }: Props) {
             </p>
             {files.length > 0 && (
               <ul className="export-files">
-                {run.files.map((f) => (
+                {run.files.map((f, i) => (
                   <li key={f.file.name}>
-                    <span className="name">{f.file.name}</span>
+                    <button type="button" className="link name" onClick={() => setViewing(i)}>
+                      {f.file.name}
+                    </button>
                     <span>
                       {f.width}×{f.height} · {formatBytes(f.file.size)}
                     </span>
@@ -240,6 +275,11 @@ export function ExportDialog({ items, getOriginal, onClose }: Props) {
               {files.length > 0 && (
                 <button type="button" onClick={download} disabled={busy}>
                   {files.length === 1 ? 'Download' : busy ? 'Zipping…' : 'Download .zip'}
+                </button>
+              )}
+              {files.length > 0 && (
+                <button type="button" className={canShare ? undefined : 'primary'} onClick={() => setViewing(0)}>
+                  View &amp; save
                 </button>
               )}
               {canShare && (
