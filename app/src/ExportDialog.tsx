@@ -216,8 +216,8 @@ export function ExportDialog({ items, getOriginal, onClose }: Props) {
             </p>
             <img className="viewer-image" src={urls[viewing]} alt={run.files[viewing].file.name} />
             <p className="hint">
-              To save it, touch and hold the image, then choose “Save to Photos” (or “Add to Photos”). On a computer,
-              right-click and choose “Save image as”.
+              On a phone, touch and hold the image and choose “Copy”, then paste it into Notes, Messages or Files. If
+              “Save to Photos” closes the app, use Copy instead. On a computer, right-click and choose “Save image as”.
             </p>
             <div className="actions">
               <button type="button" onClick={() => setViewing(viewing - 1)} disabled={viewing === 0}>
