@@ -23,7 +23,7 @@ export async function renderExport(
   options: ExportOptions,
 ): Promise<RenderedExport> {
   const info = formatInfo(options.format)
-  const renderer = new Renderer(document.createElement('canvas'))
+  const renderer = new Renderer(document.createElement('canvas'), { preserveDrawingBuffer: false })
   try {
     const bitmap = await decodeForEditing(original, photo, Math.min(renderer.maxTextureSize, SOURCE_MAX_EDGE))
     renderer.setSource(bitmap)

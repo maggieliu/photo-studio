@@ -118,10 +118,14 @@ export class Renderer {
   private bitmap: ImageBitmap | null = null
   private lost = false
 
-  constructor(canvas: HTMLCanvasElement) {
+  /**
+   * `preserveDrawingBuffer` keeps the frame readable after it is shown, which the
+   * live preview needs. Export reads the frame in the same task it draws it, so
+   * it can turn this off and avoid a second full-size copy in memory.
+   */
+  constructor(canvas: HTMLCanvasElement, { preserveDrawingBuffer = true } = {}) {
     this.canvas = canvas
-    // preserveDrawingBuffer lets canvas.toBlob read the frame after drawing.
-    const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, preserveDrawingBuffer: true })
+    const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, preserveDrawingBuffer })
     if (!gl) throw new Error('WebGL2 is not available in this browser')
     this.gl = gl
     this.init()
@@ -254,6 +258,11 @@ export class Renderer {
     // Phones allow only a few live GL contexts and hold their memory until
     // collected. Only for canvases that are thrown away: a lost context cannot
     // be reused by a new Renderer on the same canvas.
-    if (releaseGpu) this.gl.getExtension('WEBGL_lose_context')?.loseContext()
+    if (releaseGpu) {
+      this.gl.getExtension('WEBGL_lose_context')?.loseContext()
+      // Safari keeps a canvas's pixels alive until it is resized to nothing.
+      this.canvas.width = 0
+      this.canvas.height = 0
+    }
   }
 }
