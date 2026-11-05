@@ -1,0 +1,115 @@
+/*
+ * Design tokens and Tailwind setup for the redesigned UI.
+ *
+ * App.css and index.css are the old styles. They are deleted as each screen
+ * moves to the new components; until then they can override these styles.
+ */
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+/* The app is dark-only; the `dark` class is set on <html> in index.html. */
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Surfaces */
+  --background: #0f1112;
+  --foreground: #f2f4f5;
+  --card: #1a1d1f;
+  --card-foreground: #f2f4f5;
+  --popover: #1a1d1f;
+  --popover-foreground: #f2f4f5;
+
+  /* Primary actions. #0f7a78 gives white text 5:1 contrast (the design's #12908E gives 3.9:1). */
+  --primary: #0f7a78;
+  --primary-foreground: #ffffff;
+
+  --secondary: #23282b;
+  --secondary-foreground: #f2f4f5;
+  --muted: #23282b;
+  --muted-foreground: #a9b1b5;
+
+  /* Selected and hovered rows: soft teal with light-teal text. */
+  --accent: #173b3c;
+  --accent-foreground: #7fe3e0;
+
+  --destructive: #f26b6b;
+  --border: #2a2f32;
+  --input: #3a4045;
+  --ring: #2db7b5;
+
+  --chart-1: #2db7b5;
+  --chart-2: #7fe3e0;
+  --chart-3: #0f7a78;
+  --chart-4: #a9b1b5;
+  --chart-5: #3a4045;
+
+  --sidebar: #1a1d1f;
+  --sidebar-foreground: #f2f4f5;
+  --sidebar-primary: #0f7a78;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #173b3c;
+  --sidebar-accent-foreground: #7fe3e0;
+  --sidebar-border: #2a2f32;
+  --sidebar-ring: #2db7b5;
+
+  --radius: 0.625rem;
+}
+
+@theme inline {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
