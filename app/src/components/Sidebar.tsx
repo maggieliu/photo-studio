@@ -18,6 +18,8 @@ type Props = {
   onSelectView: (view: LibraryView) => void
   onNewAlbum: () => void
   onUpload: () => void
+  /** Shows the welcome page. */
+  onHome: () => void
 }
 
 function NavItem({
@@ -56,13 +58,18 @@ function NavItem({
 }
 
 /** Library navigation: views, albums and upload. Used as a fixed column on desktop and inside a drawer on phones. */
-export function Sidebar({ view, albums, counts, storage, capabilities, disabled, onSelectView, onNewAlbum, onUpload }: Props) {
+export function Sidebar({ view, albums, counts, storage, capabilities, disabled, onSelectView, onNewAlbum, onUpload, onHome }: Props) {
   return (
     <nav aria-label="Library" className="flex h-full flex-col gap-4 bg-sidebar p-4 text-sidebar-foreground">
-      <div className="flex items-center gap-2 px-2 pt-1">
+      <button
+        type="button"
+        onClick={onHome}
+        aria-label="Photo Studio, go to the welcome page"
+        className="-mx-1 flex min-h-11 items-center gap-2 rounded-lg px-3 text-left transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
+      >
         <Aperture className="size-6 text-sidebar-accent-foreground" aria-hidden />
         <span className="text-xl font-black tracking-tight">Photo Studio</span>
-      </div>
+      </button>
 
       <ul className="flex flex-col gap-1">
         <NavItem

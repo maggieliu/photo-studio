@@ -38,6 +38,7 @@ function App() {
   const [confirm, setConfirm] = useState<'album' | 'photos'>()
   const [storage, setStorage] = useState<string>()
   const [landingSeen, setLandingSeen] = useState(readLandingSeen)
+  const [landingRequested, setLandingRequested] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const capabilities = useMemo(() => detectInBrowser(), [])
 
@@ -110,10 +111,12 @@ function App() {
     })
 
   // The welcome screen shows on the first visit while the library is empty, until the person picks a way in.
-  const showLanding = !landingSeen && (!ready || photos.length === 0)
+  // The "Photo Studio" name in the sidebar brings it back at any time.
+  const showLanding = landingRequested || (!landingSeen && (!ready || photos.length === 0))
   const leaveLanding = () => {
     markLandingSeen()
     setLandingSeen(true)
+    setLandingRequested(false)
   }
 
   const doImport = (files: File[]) => {
@@ -138,6 +141,10 @@ function App() {
       onUpload={() => {
         setMenuOpen(false)
         openUpload()
+      }}
+      onHome={() => {
+        setMenuOpen(false)
+        setLandingRequested(true)
       }}
     />
   )
