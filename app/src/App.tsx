@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { detectInBrowser } from './capabilities'
 import { ConfirmDialog, NameDialog } from './components/dialogs'
+import { Landing } from './components/Landing'
 import { LibraryHeader } from './components/LibraryHeader'
 import { EmptyLibrary, GridSkeleton, NoMatches, PhotoGrid } from './components/PhotoGrid'
 import { SelectionBar } from './components/SelectionBar'
@@ -13,6 +14,7 @@ import { TooltipProvider } from './components/ui/tooltip'
 import type { ExportItem } from './exportPhoto'
 import { addTag, emptyFilter, filterPhotos, tagCounts, type Filter } from './filter'
 import { formatBytes } from './imageMeta'
+import { markLandingSeen, readLandingSeen } from './landingState'
 import { PhotoDetail } from './PhotoDetail'
 import { useLibrary } from './useLibrary'
 import './App.css'
@@ -35,6 +37,7 @@ function App() {
   const [albumDialog, setAlbumDialog] = useState<'create' | 'rename'>()
   const [confirm, setConfirm] = useState<'album' | 'photos'>()
   const [storage, setStorage] = useState<string>()
+  const [landingSeen, setLandingSeen] = useState(readLandingSeen)
   const inputRef = useRef<HTMLInputElement>(null)
   const capabilities = useMemo(() => detectInBrowser(), [])
 
@@ -106,7 +109,17 @@ function App() {
       return next
     })
 
-  const doImport = (files: File[]) => lib.importFiles(files, activeAlbum?.id)
+  // The welcome screen shows on the first visit while the library is empty, until the person picks a way in.
+  const showLanding = !landingSeen && (!ready || photos.length === 0)
+  const leaveLanding = () => {
+    markLandingSeen()
+    setLandingSeen(true)
+  }
+
+  const doImport = (files: File[]) => {
+    if (files.length > 0) leaveLanding()
+    return lib.importFiles(files, activeAlbum?.id)
+  }
   const openUpload = () => inputRef.current?.click()
 
   const sidebar = (
@@ -133,6 +146,7 @@ function App() {
     <TooltipProvider>
       <div
         className="flex h-dvh bg-background text-foreground"
+        inert={showLanding}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault()
@@ -310,6 +324,8 @@ function App() {
           stopSelecting()
         }}
       />
+
+      {showLanding && <Landing disabled={!ready || !!progress} onUpload={openUpload} onOpenLibrary={leaveLanding} />}
 
       <Toaster position="top-center" />
     </TooltipProvider>

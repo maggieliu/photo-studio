@@ -61,7 +61,7 @@ Source: the "Photo Editor & Catalog" design canvas (https://claude.ai/artifact/G
 **Build order (push after each step)**
 1. Foundation (done, not pushed on its own): Tailwind v4, shadcn/ui components, dark teal tokens. Old screens (App.css) look slightly different until they are rebuilt, so push after step 2.
 2. App shell (done): sidebar with a phone drawer, header with search and a Filters panel, a "Select" button that turns on selection, 4:3 grid with badges, selection bar, styled album and delete dialogs, toasts. Tapping a photo opens it; selecting happens only in select mode. The photo dialog, editor and export dialog still use the old styles (`App.css`) until step 4.
-3. Landing and empty state.
+3. Landing and empty state (done): the design's hero image with "Upload photos" and "Open library". It shows on the first visit while the library is empty, and not again once the person picks either button (remembered in local storage).
 4. Restyle the viewer, editor and export dialog.
 5. Replace browser prompts and confirms with styled dialogs, and add toasts.
 6. Accessibility, contrast and phone/tablet/desktop checks.
