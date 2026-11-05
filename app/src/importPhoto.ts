@@ -9,6 +9,9 @@ async function makeThumbnail(bitmap: ImageBitmap): Promise<Blob> {
   canvas.height = height
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('2D canvas unavailable')
+  // Thumbnails are JPEG, which has no transparency: without this, transparent areas turn black.
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, width, height)
   ctx.drawImage(bitmap, 0, 0, width, height)
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Thumbnail encode failed'))), 'image/jpeg', 0.8),
