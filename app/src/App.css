@@ -1,19 +1,5 @@
 .library {
-  padding: 16px;
   text-align: left;
-  flex: 1;
-}
-
-.library header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.library h1 {
-  font-size: 28px;
-  margin: 0;
 }
 
 .library button {
@@ -47,39 +33,9 @@
   font-size: 14px;
 }
 
-.empty {
-  margin: 48px 0;
-  text-align: center;
-}
-
-.grid {
-  list-style: none;
-  padding: 0;
-  margin: 16px 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 6px;
-}
-
-.grid button {
-  display: block;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  border-radius: 4px;
-  overflow: hidden;
-  aspect-ratio: 1;
-}
-
-.grid img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
 .detail {
   position: fixed;
+  z-index: 30;
   inset: 0;
   margin: auto;
   width: min(92vw, 420px);
@@ -121,26 +77,6 @@
   margin-top: 12px;
 }
 
-.library footer {
-  margin-top: 24px;
-  font-size: 13px;
-}
-
-.library footer ul {
-  list-style: none;
-  padding: 0;
-}
-
-.ua {
-  font-size: 12px;
-  word-break: break-all;
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
-
 .library button[aria-pressed='true'] {
   background: var(--accent-bg);
   border-color: var(--legacy-accent);
@@ -159,10 +95,7 @@
   min-width: 0;
 }
 
-.albums,
-.chips,
-.filters,
-.album-tools {
+.chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -171,95 +104,10 @@
   list-style: none;
 }
 
-.albums {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.albums button {
-  white-space: nowrap;
-}
-
-.filters input[type='search'] {
-  flex: 1 1 180px;
-}
-
 .chips button {
   padding: 4px 10px;
   font-size: 13px;
   border-radius: 999px;
-}
-
-.grid li {
-  position: relative;
-}
-
-.grid li.checked button {
-  outline: 3px solid var(--legacy-accent);
-  outline-offset: -3px;
-}
-
-.grid button {
-  position: relative;
-}
-
-.badge {
-  position: absolute;
-  left: 4px;
-  bottom: 4px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
-  font-size: 12px;
-}
-
-.tick {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  border: 2px solid #fff;
-  color: #fff;
-  font-size: 14px;
-  line-height: 18px;
-  text-align: center;
-}
-
-.grid li.checked .tick {
-  background: var(--legacy-accent);
-}
-
-.bulk {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-  background: var(--bg);
-  border-top: 1px solid var(--legacy-border);
-  box-shadow: var(--shadow);
-  font-size: 14px;
-}
-
-.bulk form {
-  display: contents;
-}
-
-.bulk input {
-  width: 90px;
-}
-
-.library:has(.bulk) footer {
-  margin-bottom: 120px;
 }
 
 .stars {
@@ -330,7 +178,7 @@
 .editor {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: 40;
   display: flex;
   flex-direction: column;
   background: #111;
@@ -546,7 +394,7 @@
 .export-overlay {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 45;
   display: flex;
   align-items: center;
   justify-content: center;

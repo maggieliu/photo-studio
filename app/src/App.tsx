@@ -1,39 +1,66 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { detectInBrowser } from './capabilities'
-import { addTag, emptyFilter, filterPhotos, isFiltering, tagCounts, type Filter } from './filter'
-import { Editor } from './Editor'
-import { ExportDialog } from './ExportDialog'
+import { ConfirmDialog, NameDialog } from './components/dialogs'
+import { LibraryHeader } from './components/LibraryHeader'
+import { EmptyLibrary, GridSkeleton, NoMatches, PhotoGrid } from './components/PhotoGrid'
+import { SelectionBar } from './components/SelectionBar'
+import { Sidebar, type LibraryView } from './components/Sidebar'
+import { Progress } from './components/ui/progress'
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from './components/ui/sheet'
+import { Toaster } from './components/ui/sonner'
+import { TooltipProvider } from './components/ui/tooltip'
 import type { ExportItem } from './exportPhoto'
+import { addTag, emptyFilter, filterPhotos, tagCounts, type Filter } from './filter'
+import { formatBytes } from './imageMeta'
 import { PhotoDetail } from './PhotoDetail'
 import { useLibrary } from './useLibrary'
 import './App.css'
 
-function formatBytes(n: number) {
-  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`
-  return `${(n / 1024 / 1024).toFixed(1)} MB`
-}
+// The editor and export dialog are big and only needed on demand, so they load when first opened.
+const Editor = lazy(() => import('./Editor').then((m) => ({ default: m.Editor })))
+const ExportDialog = lazy(() => import('./ExportDialog').then((m) => ({ default: m.ExportDialog })))
 
 function App() {
   const lib = useLibrary()
   const { photos, albums, ready, error, progress, importErrors } = lib
+  const [view, setView] = useState<LibraryView>({ kind: 'all' })
   const [filter, setFilter] = useState<Filter>(emptyFilter)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [selecting, setSelecting] = useState(false)
+  const [checked, setChecked] = useState<Set<string>>(new Set())
   const [selectedId, setSelectedId] = useState<string>()
   const [editingId, setEditingId] = useState<string>()
   const [exportItems, setExportItems] = useState<ExportItem[]>()
-  const [selecting, setSelecting] = useState(false)
-  const [checked, setChecked] = useState<Set<string>>(new Set())
-  const [bulkTag, setBulkTag] = useState('')
+  const [albumDialog, setAlbumDialog] = useState<'create' | 'rename'>()
+  const [confirm, setConfirm] = useState<'album' | 'photos'>()
   const [storage, setStorage] = useState<string>()
   const inputRef = useRef<HTMLInputElement>(null)
-  const caps = useMemo(() => detectInBrowser(), [])
+  const capabilities = useMemo(() => detectInBrowser(), [])
 
+  // An album that was deleted must not leave the view pointing at a ghost.
+  const activeAlbum = view.kind === 'album' ? albums.find((a) => a.id === view.id) : undefined
+  const viewKind = view.kind === 'album' && !activeAlbum ? 'all' : view.kind
+
+  const counts = useMemo(() => {
+    const perAlbum: Record<string, number> = {}
+    for (const p of photos) for (const id of p.albumIds) perAlbum[id] = (perAlbum[id] ?? 0) + 1
+    return { all: photos.length, favorites: photos.filter((p) => p.favorite).length, albums: perAlbum }
+  }, [photos])
   const tags = useMemo(() => tagCounts(photos), [photos])
-  const activeAlbum = albums.find((a) => a.id === filter.albumId)
-  // A deleted album must not leave the view filtered by a ghost id.
   const visible = useMemo(
-    () => filterPhotos(photos, { ...filter, albumId: activeAlbum?.id }),
-    [photos, filter, activeAlbum?.id],
+    () => filterPhotos(photos, { ...filter, albumId: activeAlbum?.id, favoritesOnly: viewKind === 'favorites' }),
+    [photos, filter, activeAlbum?.id, viewKind],
   )
+
+  const title = activeAlbum ? activeAlbum.name : viewKind === 'favorites' ? 'Favorites' : 'All photos'
+  const inView = activeAlbum ? (counts.albums[activeAlbum.id] ?? 0) : viewKind === 'favorites' ? counts.favorites : counts.all
+  const subtitle = !ready
+    ? 'Loading…'
+    : selecting
+      ? `${checked.size} selected`
+      : `${visible.length}${visible.length === inView ? '' : ` of ${inView}`} photo${inView === 1 ? '' : 's'}`
+
   const detailPhoto = photos.find((p) => p.id === selectedId)
   const editingPhoto = photos.find((p) => p.id === editingId)
   const editingIndex = visible.findIndex((p) => p.id === editingId)
@@ -41,14 +68,36 @@ function App() {
     const target = visible[editingIndex + offset]
     return editingIndex >= 0 && target ? () => setEditingId(target.id) : undefined
   }
-  const set = (patch: Partial<Filter>) => setFilter((f) => ({ ...f, ...patch }))
 
   useEffect(() => {
     navigator.storage
       ?.estimate?.()
-      .then(({ usage = 0, quota = 0 }) => setStorage(`${formatBytes(usage)} used of ${formatBytes(quota)}`))
+      .then(({ usage = 0, quota = 0 }) => setStorage(`${formatBytes(usage)} of ${formatBytes(quota)} used`))
       .catch(() => {})
   }, [photos])
+
+  useEffect(() => {
+    if (importErrors.length > 0) {
+      toast.error(`${importErrors.length} photo${importErrors.length === 1 ? '' : 's'} could not be imported`, {
+        description: importErrors.join('\n'),
+        duration: 10000,
+      })
+    }
+  }, [importErrors])
+
+  const checkedIds = [...checked]
+  const set = (patch: Partial<Filter>) => setFilter((f) => ({ ...f, ...patch }))
+
+  const stopSelecting = () => {
+    setSelecting(false)
+    setChecked(new Set())
+  }
+
+  const selectView = (next: LibraryView) => {
+    setView(next)
+    setMenuOpen(false)
+    setChecked(new Set())
+  }
 
   const toggleChecked = (id: string) =>
     setChecked((old) => {
@@ -57,46 +106,114 @@ function App() {
       return next
     })
 
-  const stopSelecting = () => {
-    setSelecting(false)
-    setChecked(new Set())
-  }
-
-  const checkedIds = [...checked]
-
-  const addAlbum = async () => {
-    const name = window.prompt('Album name')
-    if (!name) return
-    const album = await lib.createAlbum(name)
-    if (album) set({ albumId: album.id })
-  }
-
   const doImport = (files: File[]) => lib.importFiles(files, activeAlbum?.id)
+  const openUpload = () => inputRef.current?.click()
+
+  const sidebar = (
+    <Sidebar
+      view={activeAlbum ? view : { kind: viewKind === 'favorites' ? 'favorites' : 'all' }}
+      albums={albums}
+      counts={counts}
+      storage={storage}
+      capabilities={capabilities}
+      disabled={!ready || !!progress}
+      onSelectView={selectView}
+      onNewAlbum={() => {
+        setMenuOpen(false)
+        setAlbumDialog('create')
+      }}
+      onUpload={() => {
+        setMenuOpen(false)
+        openUpload()
+      }}
+    />
+  )
 
   return (
-    <main
-      className="library"
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault()
-        doImport([...e.dataTransfer.files].filter((f) => f.type.startsWith('image/')))
-      }}
-    >
-      <header>
-        <h1>Photo Studio</h1>
-        <div className="header-actions">
-          <button
-            type="button"
-            aria-pressed={selecting}
-            disabled={photos.length === 0}
-            onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
-          >
-            {selecting ? 'Done' : 'Select'}
-          </button>
-          <button type="button" className="primary" disabled={!ready || !!progress} onClick={() => inputRef.current?.click()}>
-            Import
-          </button>
-        </div>
+    <TooltipProvider>
+      <div
+        className="flex h-dvh bg-background text-foreground"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault()
+          doImport([...e.dataTransfer.files].filter((f) => f.type.startsWith('image/')))
+        }}
+      >
+        <aside className="hidden w-80 shrink-0 border-r md:block">{sidebar}</aside>
+
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+          <SheetContent side="left" showCloseButton={false} className="w-[85vw] max-w-80 gap-0 p-0 md:hidden">
+            <SheetTitle className="sr-only">Menu</SheetTitle>
+            <SheetDescription className="sr-only">Albums and upload</SheetDescription>
+            {sidebar}
+          </SheetContent>
+        </Sheet>
+
+        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+          <LibraryHeader
+            title={title}
+            subtitle={subtitle}
+            filter={filter}
+            tags={tags}
+            selecting={selecting}
+            canSelect={photos.length > 0}
+            uploadDisabled={!ready || !!progress}
+            onRenameAlbum={activeAlbum ? () => setAlbumDialog('rename') : undefined}
+            onDeleteAlbum={activeAlbum ? () => setConfirm('album') : undefined}
+            onFilterChange={set}
+            onToggleSelect={() => (selecting ? stopSelecting() : setSelecting(true))}
+            onOpenMenu={() => setMenuOpen(true)}
+            onUpload={openUpload}
+          />
+
+          <div className="flex flex-1 flex-col px-4 py-4 md:px-8 md:py-6">
+            {error && (
+              <p role="alert" className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                {error}
+              </p>
+            )}
+            {progress && (
+              <div className="mb-4 grid gap-2" role="status">
+                <p className="text-sm text-muted-foreground">
+                  Importing {Math.min(progress.done + 1, progress.total)} of {progress.total}…
+                </p>
+                <Progress value={(progress.done / progress.total) * 100} />
+              </div>
+            )}
+
+            {!ready ? (
+              <GridSkeleton />
+            ) : photos.length === 0 ? (
+              <EmptyLibrary onUpload={openUpload} disabled={!!progress} />
+            ) : visible.length === 0 ? (
+              <NoMatches />
+            ) : (
+              <PhotoGrid photos={visible} selecting={selecting} checked={checked} onOpen={setSelectedId} onToggle={toggleChecked} />
+            )}
+
+            {selecting && (
+              <SelectionBar
+                count={checked.size}
+                albums={albums}
+                activeAlbum={activeAlbum}
+                onSelectAll={() => setChecked(new Set(visible.map((p) => p.id)))}
+                onFavorite={() => lib.updatePhotos(checkedIds, (p) => ({ ...p, favorite: true }))}
+                onAddToAlbum={(id) =>
+                  lib.updatePhotos(checkedIds, (p) => ({ ...p, albumIds: p.albumIds.includes(id) ? p.albumIds : [...p.albumIds, id] }))
+                }
+                onRemoveFromAlbum={() =>
+                  activeAlbum &&
+                  lib.updatePhotos(checkedIds, (p) => ({ ...p, albumIds: p.albumIds.filter((a) => a !== activeAlbum.id) }))
+                }
+                onTag={(tag) => lib.updatePhotos(checkedIds, (p) => ({ ...p, tags: addTag(p.tags, tag) }))}
+                // Export in the order shown on screen, not the order they were ticked.
+                onExport={() => setExportItems(visible.filter((p) => checked.has(p.id)).map((p) => ({ photo: p, edits: p.edits })))}
+                onDelete={() => setConfirm('photos')}
+              />
+            )}
+          </div>
+        </main>
+
         <input
           ref={inputRef}
           type="file"
@@ -108,279 +225,94 @@ function App() {
             e.target.value = ''
           }}
         />
-      </header>
+      </div>
 
-      {error && <p role="alert" className="error">{error}</p>}
-      {progress && (
-        <p role="status">
-          Importing {progress.done} of {progress.total}…
-        </p>
-      )}
-      {importErrors.length > 0 && (
-        <ul className="error" role="alert">
-          {importErrors.map((m) => (
-            <li key={m}>{m}</li>
-          ))}
-        </ul>
-      )}
-
-      {ready && photos.length > 0 && (
-        <>
-          <nav className="albums" aria-label="Albums">
-            <button type="button" aria-pressed={!filter.albumId} onClick={() => set({ albumId: undefined })}>
-              All photos
-            </button>
-            {albums.map((a) => (
-              <button key={a.id} type="button" aria-pressed={filter.albumId === a.id} onClick={() => set({ albumId: a.id })}>
-                {a.name}
-              </button>
-            ))}
-            <button type="button" onClick={addAlbum}>
-              + Album
-            </button>
-          </nav>
-
-          {activeAlbum && (
-            <p className="album-tools">
-              <button
-                type="button"
-                onClick={() => {
-                  const name = window.prompt('Rename album', activeAlbum.name)
-                  if (name) lib.renameAlbum(activeAlbum.id, name)
-                }}
-              >
-                Rename album
-              </button>
-              <button
-                type="button"
-                className="danger"
-                onClick={() => {
-                  if (window.confirm(`Delete album “${activeAlbum.name}”? Its photos stay in your library.`)) {
-                    lib.deleteAlbum(activeAlbum.id)
-                  }
-                }}
-              >
-                Delete album
-              </button>
-            </p>
-          )}
-
-          <section className="filters" aria-label="Search and filter">
-            <input
-              type="search"
-              placeholder="Search name, camera or tag"
-              aria-label="Search"
-              value={filter.query}
-              onChange={(e) => set({ query: e.target.value })}
-            />
-            <select aria-label="Minimum rating" value={filter.minRating} onChange={(e) => set({ minRating: Number(e.target.value) })}>
-              <option value={0}>Any rating</option>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {n}★ and up
-                </option>
-              ))}
-            </select>
-            <select aria-label="Sort" value={filter.sort} onChange={(e) => set({ sort: e.target.value as Filter['sort'] })}>
-              <option value="added">Date added</option>
-              <option value="taken">Date taken</option>
-            </select>
-            <button type="button" aria-pressed={filter.favoritesOnly} onClick={() => set({ favoritesOnly: !filter.favoritesOnly })}>
-              ♥ Favorites
-            </button>
-            {isFiltering(filter) && (
-              <button type="button" onClick={() => setFilter((f) => ({ ...emptyFilter, albumId: f.albumId, sort: f.sort }))}>
-                Clear
-              </button>
-            )}
-          </section>
-
-          {tags.length > 0 && (
-            <ul className="chips" aria-label="Filter by tag">
-              {tags.slice(0, 12).map(({ tag, count }) => (
-                <li key={tag}>
-                  <button
-                    type="button"
-                    aria-pressed={filter.tags.includes(tag)}
-                    onClick={() =>
-                      set({ tags: filter.tags.includes(tag) ? filter.tags.filter((t) => t !== tag) : [...filter.tags, tag] })
-                    }
-                  >
-                    {tag} · {count}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
-
-      {ready && photos.length === 0 && !progress && (
-        <p className="empty">No photos yet. Tap “Import” or drop images here.</p>
-      )}
-      {ready && photos.length > 0 && visible.length === 0 && (
-        <p className="empty">No photos match. Try clearing the filters.</p>
-      )}
-
-      <ul className="grid">
-        {visible.map((p) => (
-          <li key={p.id} className={checked.has(p.id) ? 'checked' : undefined}>
-            <button
-              type="button"
-              onClick={() => (selecting ? toggleChecked(p.id) : setSelectedId(p.id))}
-              aria-label={`${selecting ? 'Select' : 'Open'} ${p.name}`}
-              aria-pressed={selecting ? checked.has(p.id) : undefined}
-            >
-              <img src={p.thumbUrl} alt={p.name} loading="lazy" />
-              {(p.favorite || p.rating > 0 || p.edits) && (
-                <span className="badge">
-                  {p.favorite ? '♥' : ''}
-                  {p.rating > 0 ? `${p.rating}★` : ''}
-                  {p.edits ? '✎' : ''}
-                </span>
-              )}
-              {selecting && <span className="tick">{checked.has(p.id) ? '✓' : ''}</span>}
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      {selecting && (
-        <div className="bulk" role="toolbar" aria-label="Selection actions">
-          <span>{checked.size} selected</span>
-          <button type="button" onClick={() => setChecked(new Set(visible.map((p) => p.id)))}>
-            All
-          </button>
-          <button
-            type="button"
-            disabled={checked.size === 0}
-            onClick={() => lib.updatePhotos(checkedIds, (p) => ({ ...p, favorite: true }))}
-          >
-            ♥
-          </button>
-          <select
-            aria-label="Add to album"
-            disabled={checked.size === 0 || albums.length === 0}
-            value=""
-            onChange={(e) => {
-              const id = e.target.value
-              lib.updatePhotos(checkedIds, (p) => ({ ...p, albumIds: p.albumIds.includes(id) ? p.albumIds : [...p.albumIds, id] }))
-            }}
-          >
-            <option value="">+ Album</option>
-            {albums.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              lib.updatePhotos(checkedIds, (p) => ({ ...p, tags: addTag(p.tags, bulkTag) }))
-              setBulkTag('')
-            }}
-          >
-            <input
-              value={bulkTag}
-              onChange={(e) => setBulkTag(e.target.value)}
-              placeholder="Tag"
-              aria-label="Tag selected photos"
-              disabled={checked.size === 0}
-            />
-          </form>
-          {activeAlbum && (
-            <button
-              type="button"
-              disabled={checked.size === 0}
-              onClick={() => lib.updatePhotos(checkedIds, (p) => ({ ...p, albumIds: p.albumIds.filter((a) => a !== activeAlbum.id) }))}
-            >
-              Remove from album
-            </button>
-          )}
-          <button
-            type="button"
-            disabled={checked.size === 0}
-            onClick={() =>
-              // Export in the order shown on screen, not the order they were ticked.
-              setExportItems(visible.filter((p) => checked.has(p.id)).map((p) => ({ photo: p, edits: p.edits })))
-            }
-          >
-            Export
-          </button>
-          <button
-            type="button"
-            className="danger"
-            disabled={checked.size === 0}
-            onClick={async () => {
-              if (window.confirm(`Delete ${checked.size} photo${checked.size === 1 ? '' : 's'}? This can't be undone.`)) {
-                await lib.removePhotos(checkedIds)
-                stopSelecting()
+      {/* Screens still on the old styles. `display: contents` keeps this wrapper out of the layout. */}
+      <div className="library" style={{ display: 'contents' }}>
+        {detailPhoto && (
+          <PhotoDetail
+            photo={detailPhoto}
+            albums={albums}
+            knownTags={tags.map((t) => t.tag)}
+            onChange={(change) => lib.updatePhotos([detailPhoto.id], change)}
+            onCreateAlbum={lib.createAlbum}
+            onDelete={() => {
+              if (window.confirm('Delete this photo? This can’t be undone.')) {
+                lib.removePhotos([detailPhoto.id])
+                setSelectedId(undefined)
               }
             }}
-          >
-            Delete
-          </button>
-        </div>
-      )}
-
-      {detailPhoto && (
-        <PhotoDetail
-          photo={detailPhoto}
-          albums={albums}
-          knownTags={tags.map((t) => t.tag)}
-          onChange={(change) => lib.updatePhotos([detailPhoto.id], change)}
-          onCreateAlbum={lib.createAlbum}
-          onDelete={() => {
-            if (window.confirm('Delete this photo? This can’t be undone.')) {
-              lib.removePhotos([detailPhoto.id])
+            onEdit={() => {
+              setEditingId(detailPhoto.id)
               setSelectedId(undefined)
-            }
-          }}
-          onEdit={() => {
-            setEditingId(detailPhoto.id)
-            setSelectedId(undefined)
-          }}
-          onExport={() => setExportItems([{ photo: detailPhoto, edits: detailPhoto.edits }])}
-          onClose={() => setSelectedId(undefined)}
-        />
-      )}
+            }}
+            onExport={() => setExportItems([{ photo: detailPhoto, edits: detailPhoto.edits }])}
+            onClose={() => setSelectedId(undefined)}
+          />
+        )}
 
-      {editingPhoto && (
-        <Editor
-          key={editingPhoto.id}
-          photo={editingPhoto}
-          getOriginal={lib.getOriginal}
-          onSave={(edits, thumb) => lib.saveEdits(editingPhoto.id, edits, thumb)}
-          onClose={() => setEditingId(undefined)}
-          onExport={(edits) => setExportItems([{ photo: editingPhoto, edits }])}
-          onPrev={neighbor(-1)}
-          onNext={neighbor(1)}
-        />
-      )}
+        <Suspense fallback={null}>
+        {editingPhoto && (
+          <Editor
+            key={editingPhoto.id}
+            photo={editingPhoto}
+            getOriginal={lib.getOriginal}
+            onSave={(edits, thumb) => lib.saveEdits(editingPhoto.id, edits, thumb)}
+            onClose={() => setEditingId(undefined)}
+            onExport={(edits) => setExportItems([{ photo: editingPhoto, edits }])}
+            onPrev={neighbor(-1)}
+            onNext={neighbor(1)}
+          />
+        )}
 
-      {exportItems && <ExportDialog items={exportItems} getOriginal={lib.getOriginal} onClose={() => setExportItems(undefined)} />}
+        {exportItems && <ExportDialog items={exportItems} getOriginal={lib.getOriginal} onClose={() => setExportItems(undefined)} />}
+        </Suspense>
+      </div>
 
-      <footer>
-        <p>
-          {ready
-            ? `${visible.length}${visible.length === photos.length ? '' : ` of ${photos.length}`} photo${photos.length === 1 ? '' : 's'}`
-            : 'Loading…'}
-          {storage ? ` · ${storage}` : ''}
-        </p>
-        <details>
-          <summary>Browser check</summary>
-          <ul>
-            {caps.map((c) => (
-              <li key={c.key}>
-                {c.supported ? '✅' : '❌'} {c.label}
-              </li>
-            ))}
-          </ul>
-          <p className="ua">{navigator.userAgent}</p>
-        </details>
-      </footer>
-    </main>
+      <NameDialog
+        open={albumDialog !== undefined}
+        title={albumDialog === 'rename' ? 'Rename album' : 'New album'}
+        initial={albumDialog === 'rename' ? activeAlbum?.name : ''}
+        submitLabel={albumDialog === 'rename' ? 'Save' : 'Create'}
+        onClose={() => setAlbumDialog(undefined)}
+        onSubmit={async (name) => {
+          if (albumDialog === 'rename' && activeAlbum) await lib.renameAlbum(activeAlbum.id, name)
+          else {
+            const album = await lib.createAlbum(name)
+            if (album) selectView({ kind: 'album', id: album.id })
+          }
+          setAlbumDialog(undefined)
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirm === 'album'}
+        title={`Delete “${activeAlbum?.name ?? 'album'}”?`}
+        description="The album is removed, but its photos stay in your library."
+        confirmLabel="Delete album"
+        onClose={() => setConfirm(undefined)}
+        onConfirm={async () => {
+          if (activeAlbum) await lib.deleteAlbum(activeAlbum.id)
+          setConfirm(undefined)
+          setView({ kind: 'all' })
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirm === 'photos'}
+        title={`Delete ${checked.size} photo${checked.size === 1 ? '' : 's'}?`}
+        description="This removes them from your library on this device. It can't be undone."
+        confirmLabel="Delete"
+        onClose={() => setConfirm(undefined)}
+        onConfirm={async () => {
+          await lib.removePhotos(checkedIds)
+          setConfirm(undefined)
+          stopSelecting()
+        }}
+      />
+
+      <Toaster position="top-center" />
+    </TooltipProvider>
   )
 }
 
