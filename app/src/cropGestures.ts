@@ -45,3 +45,27 @@ export function sameCrop(a: Crop | null, b: Crop | null): boolean {
   const y = b ?? NEUTRAL
   return x.aspect === y.aspect && Math.abs(x.zoom - y.zoom) < eps && Math.abs(x.px - y.px) < eps && Math.abs(x.py - y.py) < eps
 }
+
+type Point = { x: number; y: number }
+
+/** Angle in degrees of the line from a to b. Screen y points down, so a clockwise turn is positive. */
+export function lineAngle(a: Point, b: Point): number {
+  return (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI
+}
+
+/**
+ * How far a two-finger line has turned since the gesture began, in degrees
+ * (clockwise positive, the short way round). The first few degrees are ignored
+ * so an ordinary pinch does not tilt the photo by accident.
+ */
+export function twistDegrees(startAngle: number, angle: number, deadzone = 2): number {
+  const turned = ((((angle - startAngle + 180) % 360) + 360) % 360) - 180
+  const beyond = Math.max(0, Math.abs(turned) - deadzone)
+  // Return a plain 0 inside the dead zone, not -0.
+  return beyond === 0 ? 0 : Math.sign(turned) * beyond
+}
+
+/** The straighten angle after a twist: limited to ±45° and rounded to a tenth of a degree. */
+export function straightenAfterTwist(straighten: number, twist: number): number {
+  return Math.round(clamp(straighten + twist, -45, 45) * 10) / 10
+}

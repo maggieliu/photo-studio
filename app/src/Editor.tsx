@@ -6,7 +6,9 @@ import {
   FlipHorizontal2,
   Loader2,
   Palette,
+  RectangleHorizontal,
   Redo2,
+  RefreshCcw,
   RotateCcw,
   RotateCw,
   Share2,
@@ -22,7 +24,7 @@ import { cn } from '@/lib/utils'
 import { CROP_ICONS, SLIDER_ICONS } from './adjustmentIcons'
 import { AdjustmentPicker, type AdjustmentItem } from './components/AdjustmentPicker'
 import { SliderRow } from './components/SliderRow'
-import { panCrop, sameCrop, zoomCrop } from './cropGestures'
+import { lineAngle, panCrop, sameCrop, straightenAfterTwist, twistDegrees, zoomCrop } from './cropGestures'
 import { decodeForEditing } from './decode'
 import {
   applyPreset,
@@ -250,7 +252,8 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
   const touch = useMediaQuery('(pointer: coarse)')
   const cropMode = touch && tab === 'crop' && status === 'ready'
   const pointers = useRef(new Map<number, { x: number; y: number }>())
-  const pinch = useRef<{ distance: number; crop: EditSettings['crop'] } | null>(null)
+  const pinch = useRef<{ distance: number; angle: number; crop: EditSettings['crop']; straighten: number } | null>(null)
+  const [twisting, setTwisting] = useState(false)
   // The latest crop, kept in a ref because several touch events can arrive before React re-renders.
   const liveCrop = useRef<EditSettings['crop']>(edits.crop)
   useEffect(() => {
@@ -263,13 +266,18 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
     // One key for the whole gesture, so a drag or pinch is a single undo step.
     change({ crop: next }, 'crop-gesture')
   }
+  const applyPinch = (nextCrop: NonNullable<EditSettings['crop']>, straighten: number) => {
+    if (sameCrop(liveCrop.current, nextCrop) && straighten === editsRef.current.straighten) return
+    liveCrop.current = nextCrop
+    change({ crop: nextCrop, straighten }, 'crop-gesture')
+  }
   const photoFrame = () => {
     const size = rendererRef.current?.sourceSize
     return size ? frameSize(editsRef.current.rotation, size.width, size.height) : undefined
   }
-  const distanceBetween = () => {
+  const fingers = () => {
     const [a, b] = [...pointers.current.values()]
-    return Math.hypot(a.x - b.x, a.y - b.y) || 1
+    return { distance: Math.hypot(a.x - b.x, a.y - b.y) || 1, angle: lineAngle(a, b) }
   }
   const onCropDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!cropMode) return
@@ -279,7 +287,10 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
       // Not a real touch (for example a scripted event): carry on without capture.
     }
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    if (pointers.current.size === 2) pinch.current = { distance: distanceBetween(), crop: liveCrop.current }
+    if (pointers.current.size === 2) {
+      pinch.current = { ...fingers(), crop: liveCrop.current, straighten: editsRef.current.straighten }
+      setTwisting(true)
+    }
   }
   const onCropMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const previous = pointers.current.get(e.pointerId)
@@ -288,7 +299,13 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
     const current = { x: e.clientX, y: e.clientY }
     pointers.current.set(e.pointerId, current)
     if (pointers.current.size === 2 && pinch.current) {
-      applyCrop(zoomCrop(pinch.current.crop, frame.w, frame.h, distanceBetween() / pinch.current.distance))
+      // Two fingers do both at once: spreading resizes the crop, twisting tilts the photo.
+      const now = fingers()
+      const start = pinch.current
+      applyPinch(
+        zoomCrop(start.crop, frame.w, frame.h, now.distance / start.distance),
+        straightenAfterTwist(start.straighten, twistDegrees(start.angle, now.angle)),
+      )
     } else if (pointers.current.size === 1) {
       const box = e.currentTarget.getBoundingClientRect()
       applyCrop(panCrop(liveCrop.current, frame.w, frame.h, box.width, box.height, current.x - previous.x, current.y - previous.y))
@@ -296,7 +313,10 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
   }
   const onCropEnd = (e: React.PointerEvent<HTMLCanvasElement>) => {
     pointers.current.delete(e.pointerId)
-    if (pointers.current.size < 2) pinch.current = null
+    if (pointers.current.size < 2) {
+      pinch.current = null
+      setTwisting(false)
+    }
   }
   const noFraming = !crop && edits.rotation === 0 && !edits.flipH && edits.straighten === 0
 
@@ -332,7 +352,7 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
           />
           {cropMode && (
             <p className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/65 px-3 py-1 text-xs whitespace-nowrap text-white">
-              Drag to move · Pinch to zoom
+              {twisting ? `Straighten ${edits.straighten.toFixed(1)}°` : 'Drag to move · Pinch to zoom · Twist to straighten'}
             </p>
           )}
           {status === 'loading' && (
@@ -402,8 +422,7 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
             <TabsContent value="detail">{SLIDERS.filter((s) => s.group === 'detail').map(slider)}</TabsContent>
 
             <TabsContent value="crop" className="grid gap-3">
-              <div className="grid gap-1.5">
-                <span className="text-sm font-medium">Aspect ratio</span>
+              <div className="flex items-center gap-2">
                 <Select
                   value={activeAspect || 'Original'}
                   onValueChange={(label) => {
@@ -413,7 +432,8 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
                     else setCrop({ aspect: a.aspect })
                   }}
                 >
-                  <SelectTrigger className="h-11 w-full text-base" aria-label="Aspect ratio">
+                  <SelectTrigger className="h-11 w-32 shrink-0 gap-2 text-base data-[size=default]:h-11" aria-label="Aspect ratio" title="Aspect ratio">
+                    <RectangleHorizontal className="size-4 text-muted-foreground" aria-hidden />
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -424,34 +444,6 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              {touch ? (
-                <div className="grid gap-1">
-                  <p className="text-xs text-muted-foreground">Drag the photo to move it. Pinch with two fingers to resize.</p>
-                  <SliderRow
-                    label="Straighten"
-                    value={edits.straighten}
-                    min={-45}
-                    max={45}
-                    step={0.5}
-                    format={(v) => `${v}°`}
-                    onChange={(v) => change({ straighten: v }, 'straighten')}
-                    onReset={() => change({ straighten: 0 })}
-                  />
-                </div>
-              ) : (
-                <AdjustmentPicker
-                  label="Choose a crop adjustment"
-                  items={cropItems}
-                  active={picked.crop}
-                  onActiveChange={(id) => setPicked((p) => ({ ...p, crop: id }))}
-                  onChange={changeCrop}
-                  onReset={resetCrop}
-                />
-              )}
-
-              <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
@@ -483,15 +475,34 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
                 >
                   <FlipHorizontal2 />
                 </Button>
+                {/* Only shown once there is something to reset; it keeps its space so the row does not shift. */}
                 <Button
                   variant="ghost"
-                  className="ml-auto h-11"
-                  disabled={noFraming}
+                  size="icon"
+                  className={cn('ml-auto size-11', noFraming && 'invisible')}
+                  aria-label="Reset framing"
+                  title="Reset framing"
+                  tabIndex={noFraming ? -1 : 0}
                   onClick={() => change({ crop: null, rotation: 0, flipH: false, straighten: 0 })}
                 >
-                  Reset framing
+                  <RefreshCcw />
                 </Button>
               </div>
+
+              {touch ? (
+                <p className="text-xs text-muted-foreground">
+                  Drag the photo to move it. Pinch with two fingers to resize, and twist them to straighten.
+                </p>
+              ) : (
+                <AdjustmentPicker
+                  label="Choose a crop adjustment"
+                  items={cropItems}
+                  active={picked.crop}
+                  onActiveChange={(id) => setPicked((p) => ({ ...p, crop: id }))}
+                  onChange={changeCrop}
+                  onReset={resetCrop}
+                />
+              )}
             </TabsContent>
 
             <TabsContent value="presets" className="grid gap-3">

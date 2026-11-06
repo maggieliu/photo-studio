@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Crop } from './edits'
 import { cropRect } from './geometry'
-import { panCrop, sameCrop, zoomCrop } from './cropGestures'
+import { lineAngle, panCrop, sameCrop, straightenAfterTwist, twistDegrees, zoomCrop } from './cropGestures'
 
 // A 4:2 frame with a square crop at half size leaves room to move in both directions.
 const crop: Crop = { aspect: 1, zoom: 0.5, px: 0.5, py: 0.5 }
@@ -101,5 +101,37 @@ describe('sameCrop', () => {
     expect(sameCrop(crop, { ...crop, zoom: 0.4 })).toBe(false)
     expect(sameCrop(crop, { ...crop, aspect: 2 })).toBe(false)
     expect(sameCrop(crop, { ...crop })).toBe(true)
+  })
+})
+
+describe('twist', () => {
+  it('measures the angle of the line between two fingers', () => {
+    expect(lineAngle({ x: 0, y: 0 }, { x: 10, y: 0 })).toBeCloseTo(0)
+    expect(lineAngle({ x: 0, y: 0 }, { x: 0, y: 10 })).toBeCloseTo(90) // down on screen
+    expect(lineAngle({ x: 0, y: 0 }, { x: -10, y: 0 })).toBeCloseTo(180)
+  })
+
+  it('counts a clockwise turn as positive and anticlockwise as negative', () => {
+    expect(twistDegrees(0, 20)).toBeCloseTo(18) // 20 degrees minus the 2 degree dead zone
+    expect(twistDegrees(0, -20)).toBeCloseTo(-18)
+  })
+
+  it('ignores small movements so a pinch does not tilt the photo', () => {
+    expect(twistDegrees(10, 11.5)).toBe(0)
+    expect(twistDegrees(10, 8.5)).toBe(0)
+  })
+
+  it('takes the short way round the half-turn boundary', () => {
+    // Going from 170 to -170 degrees is a 20 degree clockwise turn, not -340.
+    expect(twistDegrees(170, -170)).toBeCloseTo(18)
+    expect(twistDegrees(-170, 170)).toBeCloseTo(-18)
+  })
+
+  it('adds to the current straighten angle within the allowed range', () => {
+    expect(straightenAfterTwist(5, 10)).toBe(15)
+    expect(straightenAfterTwist(-5, -10)).toBe(-15)
+    expect(straightenAfterTwist(40, 30)).toBe(45)
+    expect(straightenAfterTwist(-40, -30)).toBe(-45)
+    expect(straightenAfterTwist(0, 3.14159)).toBe(3.1)
   })
 })
