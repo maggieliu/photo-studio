@@ -88,8 +88,9 @@ export function Sidebar({ view, albums, counts, storage, capabilities, disabled,
         />
       </ul>
 
-      <div className="flex items-center justify-between pl-3">
-        <h2 className="text-sm font-bold tracking-wide text-muted-foreground uppercase">Albums</h2>
+      {/* A tinted band so the heading stands out from the rows around it. */}
+      <div className="flex items-center justify-between rounded-lg bg-secondary pl-3">
+        <h2 className="text-sm font-bold tracking-wide text-sidebar-foreground uppercase">Albums</h2>
         <Button variant="ghost" size="icon" aria-label="New album" onClick={onNewAlbum} className="size-11">
           <CirclePlus className="size-6 text-sidebar-accent-foreground" />
         </Button>
