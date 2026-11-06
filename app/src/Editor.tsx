@@ -20,7 +20,8 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { AdjustmentPicker } from './components/AdjustmentPicker'
+import { CROP_ICONS, SLIDER_ICONS } from './adjustmentIcons'
+import { AdjustmentPicker, type AdjustmentItem } from './components/AdjustmentPicker'
 import { SliderRow } from './components/SliderRow'
 import { decodeForEditing } from './decode'
 import {
@@ -34,7 +35,6 @@ import {
   SLIDERS,
   type EditSettings,
   type SliderDef,
-  type SliderKey,
 } from './edits'
 import { createHistory, push, redo, undo } from './history'
 import { THUMB_SIZE } from './imageMeta'
@@ -70,7 +70,8 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
   const [tab, setTab] = useState<Tab>('light')
   const [comparing, setComparing] = useState(false)
   const [restoreTick, setRestoreTick] = useState(0)
-  const [picked, setPicked] = useState<{ light: SliderKey; color: SliderKey }>({ light: 'exposure', color: 'temperature' })
+  // Which adjustment is showing in each tab.
+  const [picked, setPicked] = useState<Record<'light' | 'color' | 'crop', string>>({ light: 'exposure', color: 'temperature', crop: 'zoom' })
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<Renderer | null>(null)
@@ -223,6 +224,25 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
 
   const activeAspect =
     CROP_ASPECTS.find((a) => (a.aspect === 0 ? !crop || crop.aspect === 0 : crop !== null && Math.abs(crop.aspect - a.aspect) < 1e-6))?.label ?? ''
+  // Crop size and position only apply once there is a crop; the position icons are greyed out until then.
+  const cropItems: AdjustmentItem[] = [
+    { id: 'zoom', label: 'Crop size', ...CROP_ICONS.zoom, value: Math.round((crop?.zoom ?? 1) * 100), min: 10, max: 100, resetValue: 100, format: (v) => `${v}%` },
+    { id: 'px', label: 'Position left–right', ...CROP_ICONS.px, value: Math.round((crop?.px ?? 0.5) * 100), min: 0, max: 100, resetValue: 50, disabled: !crop },
+    { id: 'py', label: 'Position up–down', ...CROP_ICONS.py, value: Math.round((crop?.py ?? 0.5) * 100), min: 0, max: 100, resetValue: 50, disabled: !crop },
+    { id: 'straighten', label: 'Straighten', ...CROP_ICONS.straighten, value: edits.straighten, min: -45, max: 45, step: 0.5, format: (v) => `${v}°` },
+  ]
+  const changeCrop = (id: string, v: number) => {
+    if (id === 'zoom') setCrop({ zoom: v / 100 }, 'crop-zoom')
+    else if (id === 'px') setCrop({ px: v / 100 }, 'crop-px')
+    else if (id === 'py') setCrop({ py: v / 100 }, 'crop-py')
+    else change({ straighten: v }, 'straighten')
+  }
+  const resetCrop = (id: string) => {
+    if (id === 'zoom') setCrop({ zoom: 1 })
+    else if (id === 'px') setCrop({ px: 0.5 })
+    else if (id === 'py') setCrop({ py: 0.5 })
+    else change({ straighten: 0 })
+  }
   const noFraming = !crop && edits.rotation === 0 && !edits.flipH && edits.straighten === 0
 
   return (
@@ -302,12 +322,13 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
             {(['light', 'color'] as const).map((group) => (
               <TabsContent key={group} value={group}>
                 <AdjustmentPicker
-                  sliders={SLIDERS.filter((s) => s.group === group)}
-                  edits={edits}
+                  items={SLIDERS.filter((s) => s.group === group).map(
+                    (def): AdjustmentItem => ({ id: def.key, label: def.label, ...SLIDER_ICONS[def.key], value: edits[def.key], min: def.min, max: def.max }),
+                  )}
                   active={picked[group]}
-                  onActiveChange={(key) => setPicked((p) => ({ ...p, [group]: key }))}
-                  onChange={(key, v) => change({ [key]: v }, key)}
-                  onReset={(key) => change({ [key]: 0 })}
+                  onActiveChange={(id) => setPicked((p) => ({ ...p, [group]: id }))}
+                  onChange={(id, v) => change({ [id]: v } as Partial<EditSettings>, id)}
+                  onReset={(id) => change({ [id]: 0 } as Partial<EditSettings>)}
                 />
               </TabsContent>
             ))}
@@ -351,50 +372,14 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
                 </Button>
               </div>
 
-              <div>
-                <SliderRow
-                  label="Crop size"
-                  value={Math.round((crop?.zoom ?? 1) * 100)}
-                  min={10}
-                  max={100}
-                  resetValue={100}
-                  format={(v) => `${v}%`}
-                  onChange={(v) => setCrop({ zoom: v / 100 }, 'crop-zoom')}
-                  onReset={() => setCrop({ zoom: 1 })}
-                />
-                {crop && (
-                  <>
-                    <SliderRow
-                      label="Position left–right"
-                      value={Math.round(crop.px * 100)}
-                      min={0}
-                      max={100}
-                      resetValue={50}
-                      onChange={(v) => setCrop({ px: v / 100 }, 'crop-px')}
-                      onReset={() => setCrop({ px: 0.5 })}
-                    />
-                    <SliderRow
-                      label="Position up–down"
-                      value={Math.round(crop.py * 100)}
-                      min={0}
-                      max={100}
-                      resetValue={50}
-                      onChange={(v) => setCrop({ py: v / 100 }, 'crop-py')}
-                      onReset={() => setCrop({ py: 0.5 })}
-                    />
-                  </>
-                )}
-                <SliderRow
-                  label="Straighten"
-                  value={edits.straighten}
-                  min={-45}
-                  max={45}
-                  step={0.5}
-                  format={(v) => `${v}°`}
-                  onChange={(v) => change({ straighten: v }, 'straighten')}
-                  onReset={() => change({ straighten: 0 })}
-                />
-              </div>
+              <AdjustmentPicker
+                label="Choose a crop adjustment"
+                items={cropItems}
+                active={picked.crop}
+                onActiveChange={(id) => setPicked((p) => ({ ...p, crop: id }))}
+                onChange={changeCrop}
+                onReset={resetCrop}
+              />
 
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" className="h-11 gap-2" onClick={() => setHist((h) => push(h, rotateBy(h.present, -1)))}>
