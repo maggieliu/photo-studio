@@ -4,6 +4,7 @@ import { detectInBrowser } from './capabilities'
 import { ConfirmDialog, NameDialog } from './components/dialogs'
 import { Landing } from './components/Landing'
 import { LibraryHeader } from './components/LibraryHeader'
+import { PhotoViewer } from './components/PhotoViewer'
 import { EmptyLibrary, GridSkeleton, NoMatches, PhotoGrid } from './components/PhotoGrid'
 import { SelectionBar } from './components/SelectionBar'
 import { Sidebar, type LibraryView } from './components/Sidebar'
@@ -11,13 +12,13 @@ import { Progress } from './components/ui/progress'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from './components/ui/sheet'
 import { Toaster } from './components/ui/sonner'
 import { TooltipProvider } from './components/ui/tooltip'
+import { defaultEdits } from './edits'
 import type { ExportItem } from './exportPhoto'
 import { addTag, emptyFilter, filterPhotos, tagCounts, type Filter } from './filter'
 import { formatBytes } from './imageMeta'
 import { markLandingSeen, readLandingSeen } from './landingState'
-import { PhotoDetail } from './PhotoDetail'
+import { makeOriginalThumb } from './preview'
 import { useLibrary } from './useLibrary'
-import './App.css'
 
 // The editor and export dialog are big and only needed on demand, so they load when first opened.
 const Editor = lazy(() => import('./Editor').then((m) => ({ default: m.Editor })))
@@ -31,11 +32,11 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [selecting, setSelecting] = useState(false)
   const [checked, setChecked] = useState<Set<string>>(new Set())
-  const [selectedId, setSelectedId] = useState<string>()
+  const [viewerId, setViewerId] = useState<string>()
   const [editingId, setEditingId] = useState<string>()
   const [exportItems, setExportItems] = useState<ExportItem[]>()
   const [albumDialog, setAlbumDialog] = useState<'create' | 'rename'>()
-  const [confirm, setConfirm] = useState<'album' | 'photos'>()
+  const [confirm, setConfirm] = useState<'album' | 'photos' | 'photo' | 'revert'>()
   const [storage, setStorage] = useState<string>()
   const [landingSeen, setLandingSeen] = useState(readLandingSeen)
   const [landingRequested, setLandingRequested] = useState(false)
@@ -65,13 +66,15 @@ function App() {
       ? `${checked.size} selected`
       : `${visible.length}${visible.length === inView ? '' : ` of ${inView}`} photo${inView === 1 ? '' : 's'}`
 
-  const detailPhoto = photos.find((p) => p.id === selectedId)
+  const viewerPhoto = photos.find((p) => p.id === viewerId)
   const editingPhoto = photos.find((p) => p.id === editingId)
-  const editingIndex = visible.findIndex((p) => p.id === editingId)
-  const neighbor = (offset: number) => {
-    const target = visible[editingIndex + offset]
-    return editingIndex >= 0 && target ? () => setEditingId(target.id) : undefined
+  // The photo before or after this one in the list on screen, if any.
+  const neighborOf = (id: string | undefined, offset: number, go: (id: string) => void) => {
+    const index = visible.findIndex((p) => p.id === id)
+    const target = index >= 0 ? visible[index + offset] : undefined
+    return target ? () => go(target.id) : undefined
   }
+  const viewerIndex = visible.findIndex((p) => p.id === viewerId)
 
   useEffect(() => {
     navigator.storage
@@ -209,7 +212,7 @@ function App() {
             ) : visible.length === 0 ? (
               <NoMatches />
             ) : (
-              <PhotoGrid photos={visible} selecting={selecting} checked={checked} onOpen={setSelectedId} onToggle={toggleChecked} />
+              <PhotoGrid photos={visible} selecting={selecting} checked={checked} onOpen={setViewerId} onToggle={toggleChecked} />
             )}
 
             {selecting && (
@@ -248,47 +251,47 @@ function App() {
         />
       </div>
 
-      {/* Screens still on the old styles. `display: contents` keeps this wrapper out of the layout. */}
-      <div className="library" style={{ display: 'contents' }}>
-        {detailPhoto && (
-          <PhotoDetail
-            photo={detailPhoto}
-            albums={albums}
-            knownTags={tags.map((t) => t.tag)}
-            onChange={(change) => lib.updatePhotos([detailPhoto.id], change)}
-            onCreateAlbum={lib.createAlbum}
-            onDelete={() => {
-              if (window.confirm('Delete this photo? This can’t be undone.')) {
-                lib.removePhotos([detailPhoto.id])
-                setSelectedId(undefined)
-              }
-            }}
-            onEdit={() => {
-              setEditingId(detailPhoto.id)
-              setSelectedId(undefined)
-            }}
-            onExport={() => setExportItems([{ photo: detailPhoto, edits: detailPhoto.edits }])}
-            onClose={() => setSelectedId(undefined)}
-          />
-        )}
+      {/* While the editor is open it replaces the viewer; closing it brings the viewer back. */}
+      {viewerPhoto && !editingPhoto && (
+        <PhotoViewer
+          photo={viewerPhoto}
+          position={{ index: Math.max(viewerIndex, 0), total: Math.max(visible.length, 1) }}
+          albums={albums}
+          knownTags={tags.map((t) => t.tag)}
+          getOriginal={lib.getOriginal}
+          savePreview={lib.savePreview}
+          onPrev={neighborOf(viewerId, -1, setViewerId)}
+          onNext={neighborOf(viewerId, 1, setViewerId)}
+          onClose={() => setViewerId(undefined)}
+          onChange={(change) => lib.updatePhotos([viewerPhoto.id], change)}
+          onCreateAlbum={lib.createAlbum}
+          onEdit={() => setEditingId(viewerPhoto.id)}
+          onExport={() => setExportItems([{ photo: viewerPhoto, edits: viewerPhoto.edits }])}
+          onDelete={() => setConfirm('photo')}
+          onRevert={() => setConfirm('revert')}
+        />
+      )}
 
-        <Suspense fallback={null}>
+      <Suspense fallback={null}>
         {editingPhoto && (
           <Editor
             key={editingPhoto.id}
             photo={editingPhoto}
             getOriginal={lib.getOriginal}
             onSave={(edits, thumb) => lib.saveEdits(editingPhoto.id, edits, thumb)}
-            onClose={() => setEditingId(undefined)}
+            onClose={() => {
+              // Return to the viewer on the photo that was last edited.
+              setViewerId(editingPhoto.id)
+              setEditingId(undefined)
+            }}
             onExport={(edits) => setExportItems([{ photo: editingPhoto, edits }])}
-            onPrev={neighbor(-1)}
-            onNext={neighbor(1)}
+            onPrev={neighborOf(editingId, -1, setEditingId)}
+            onNext={neighborOf(editingId, 1, setEditingId)}
           />
         )}
 
         {exportItems && <ExportDialog items={exportItems} getOriginal={lib.getOriginal} onClose={() => setExportItems(undefined)} />}
-        </Suspense>
-      </div>
+      </Suspense>
 
       <NameDialog
         open={albumDialog !== undefined}
@@ -329,6 +332,43 @@ function App() {
           await lib.removePhotos(checkedIds)
           setConfirm(undefined)
           stopSelecting()
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirm === 'photo'}
+        title="Delete this photo?"
+        description="This removes it from your library on this device. It can't be undone."
+        confirmLabel="Delete"
+        onClose={() => setConfirm(undefined)}
+        onConfirm={async () => {
+          if (viewerPhoto) {
+            // Move on to a neighbor so the viewer stays open when there are more photos.
+            const next = visible[viewerIndex + 1] ?? visible[viewerIndex - 1]
+            await lib.removePhotos([viewerPhoto.id])
+            setViewerId(next && next.id !== viewerPhoto.id ? next.id : undefined)
+          }
+          setConfirm(undefined)
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirm === 'revert'}
+        title="Revert to the original?"
+        description="All edits to this photo are removed. The original file is not affected."
+        confirmLabel="Revert"
+        onClose={() => setConfirm(undefined)}
+        onConfirm={async () => {
+          setConfirm(undefined)
+          if (!viewerPhoto) return
+          try {
+            const original = await lib.getOriginal(viewerPhoto.id)
+            if (!original) throw new Error('The original file is missing')
+            await lib.saveEdits(viewerPhoto.id, defaultEdits, await makeOriginalThumb(original, viewerPhoto))
+            toast.success('Reverted to the original')
+          } catch {
+            toast.error('Could not revert this photo')
+          }
         }}
       />
 

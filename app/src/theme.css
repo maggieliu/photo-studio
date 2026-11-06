@@ -1,9 +1,4 @@
-/*
- * Design tokens and Tailwind setup for the redesigned UI.
- *
- * App.css and index.css are the old styles. They are deleted as each screen
- * moves to the new components; until then they can override these styles.
- */
+/* Design tokens and Tailwind setup. The app is dark only. */
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';

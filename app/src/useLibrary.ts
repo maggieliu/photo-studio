@@ -81,12 +81,19 @@ export function useLibrary() {
         ...p,
         edits: isDefaultEdits(edits) ? undefined : edits,
         thumb,
+        // The cached preview shows the old edits, so make a fresh one next time.
+        preview: undefined,
       }))
       thumbUrls.current.replace(id)
       await refresh()
     },
     [refresh],
   )
+
+  // Stores a preview without reloading the library. It is dropped if the edits changed while it was being made.
+  const savePreview = useCallback(async (id: string, editsJson: string, preview: Blob) => {
+    await catalogRef.current?.update([id], (p) => (JSON.stringify(p.edits ?? null) === editsJson ? { ...p, preview } : p))
+  }, [])
 
   const removePhotos = useCallback(
     async (ids: string[]) => {
@@ -134,6 +141,7 @@ export function useLibrary() {
     updatePhotos,
     getOriginal,
     saveEdits,
+    savePreview,
     removePhotos,
     createAlbum,
     renameAlbum,

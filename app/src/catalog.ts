@@ -19,6 +19,8 @@ export type PhotoRecord = {
   albumIds: string[]
   /** Absent until the photo is edited. The original file is never changed. */
   edits?: EditSettings
+  /** A mid-size JPEG of the photo as edited, made the first time it is viewed and dropped whenever the edits change. */
+  preview?: Blob
 }
 
 export type AlbumRecord = {

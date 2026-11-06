@@ -62,8 +62,8 @@ Source: the "Photo Editor & Catalog" design canvas (https://claude.ai/artifact/G
 1. Foundation (done, not pushed on its own): Tailwind v4, shadcn/ui components, dark teal tokens. Old screens (App.css) look slightly different until they are rebuilt, so push after step 2.
 2. App shell (done): sidebar with a phone drawer, header with search and a Filters panel, a "Select" button that turns on selection, 4:3 grid with badges, selection bar, styled album and delete dialogs, toasts. Tapping a photo opens it; selecting happens only in select mode. The photo dialog, editor and export dialog still use the old styles (`App.css`) until step 4.
 3. Landing and empty state (done): the design's hero image with "Upload photos" and "Open library". It shows on the first visit while the library is empty, and not again once the person picks either button (remembered in local storage). Tapping "Photo Studio" at the top of the sidebar or phone menu shows it again at any time.
-4. Restyle the viewer, editor and export dialog.
-5. Replace browser prompts and confirms with styled dialogs, and add toasts.
+4. Viewer, editor and export dialog (done): a full-screen photo viewer (cached 1600px preview, swipe or arrow keys, stars and favorite, Edit/Export/Delete, an info panel for tags, albums, details and "Revert to original"); the editor on tabs with touch-friendly sliders and a side panel on desktop; the export dialog on the new components. The old `App.css` and `index.css` are deleted. A filmstrip in the viewer is not built yet.
+5. Styled dialogs and toasts (done): album names, deleting and reverting use dialogs, and errors use toasts. No browser prompts or confirms are left.
 6. Accessibility, contrast and phone/tablet/desktop checks.
 
 ## Risks and checks

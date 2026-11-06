@@ -21,11 +21,12 @@ export async function renderExport(
   photo: { width?: number; height?: number },
   edits: EditSettings,
   options: ExportOptions,
+  limits: { sourceMaxEdge?: number } = {},
 ): Promise<RenderedExport> {
   const info = formatInfo(options.format)
   const renderer = new Renderer(document.createElement('canvas'), { preserveDrawingBuffer: false })
   try {
-    const bitmap = await decodeForEditing(original, photo, Math.min(renderer.maxTextureSize, SOURCE_MAX_EDGE))
+    const bitmap = await decodeForEditing(original, photo, Math.min(renderer.maxTextureSize, limits.sourceMaxEdge ?? SOURCE_MAX_EDGE))
     renderer.setSource(bitmap)
 
     // What the user asked for, measured on the true original when we know its size.
