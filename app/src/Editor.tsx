@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { CROP_ICONS, SLIDER_ICONS } from './adjustmentIcons'
 import { AdjustmentPicker, type AdjustmentItem } from './components/AdjustmentPicker'
 import { SliderRow } from './components/SliderRow'
+import { panCrop, sameCrop, zoomCrop } from './cropGestures'
 import { decodeForEditing } from './decode'
 import {
   applyPreset,
@@ -35,10 +36,12 @@ import {
   type EditSettings,
   type SliderDef,
 } from './edits'
+import { frameSize } from './geometry'
 import { createHistory, push, redo, undo } from './history'
 import { THUMB_SIZE } from './imageMeta'
 import { Renderer } from './renderer'
 import type { LibraryPhoto } from './useLibrary'
+import { useMediaQuery } from './useMediaQuery'
 
 const PREVIEW_MAX = 2048
 
@@ -242,6 +245,59 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
     else if (id === 'py') setCrop({ py: 0.5 })
     else change({ straighten: 0 })
   }
+  // On a touch screen the photo itself is the crop control: drag it to move, pinch it to resize.
+  // Computers keep the sliders.
+  const touch = useMediaQuery('(pointer: coarse)')
+  const cropMode = touch && tab === 'crop' && status === 'ready'
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef<{ distance: number; crop: EditSettings['crop'] } | null>(null)
+  // The latest crop, kept in a ref because several touch events can arrive before React re-renders.
+  const liveCrop = useRef<EditSettings['crop']>(edits.crop)
+  useEffect(() => {
+    liveCrop.current = edits.crop
+  }, [edits.crop])
+
+  const applyCrop = (next: NonNullable<EditSettings['crop']>) => {
+    if (sameCrop(liveCrop.current, next)) return
+    liveCrop.current = next
+    // One key for the whole gesture, so a drag or pinch is a single undo step.
+    change({ crop: next }, 'crop-gesture')
+  }
+  const photoFrame = () => {
+    const size = rendererRef.current?.sourceSize
+    return size ? frameSize(editsRef.current.rotation, size.width, size.height) : undefined
+  }
+  const distanceBetween = () => {
+    const [a, b] = [...pointers.current.values()]
+    return Math.hypot(a.x - b.x, a.y - b.y) || 1
+  }
+  const onCropDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!cropMode) return
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // Not a real touch (for example a scripted event): carry on without capture.
+    }
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (pointers.current.size === 2) pinch.current = { distance: distanceBetween(), crop: liveCrop.current }
+  }
+  const onCropMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const previous = pointers.current.get(e.pointerId)
+    const frame = photoFrame()
+    if (!cropMode || !previous || !frame) return
+    const current = { x: e.clientX, y: e.clientY }
+    pointers.current.set(e.pointerId, current)
+    if (pointers.current.size === 2 && pinch.current) {
+      applyCrop(zoomCrop(pinch.current.crop, frame.w, frame.h, distanceBetween() / pinch.current.distance))
+    } else if (pointers.current.size === 1) {
+      const box = e.currentTarget.getBoundingClientRect()
+      applyCrop(panCrop(liveCrop.current, frame.w, frame.h, box.width, box.height, current.x - previous.x, current.y - previous.y))
+    }
+  }
+  const onCropEnd = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    pointers.current.delete(e.pointerId)
+    if (pointers.current.size < 2) pinch.current = null
+  }
   const noFraming = !crop && edits.rotation === 0 && !edits.flipH && edits.straighten === 0
 
   return (
@@ -266,7 +322,19 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
         </header>
 
         <div className="relative flex min-h-0 flex-1 items-center justify-center p-2">
-          <canvas ref={canvasRef} className={cn('max-h-full max-w-full rounded-sm', status !== 'ready' && 'hidden')} />
+          <canvas
+            ref={canvasRef}
+            className={cn('max-h-full max-w-full rounded-sm', status !== 'ready' && 'hidden', cropMode && 'touch-none ring-2 ring-white')}
+            onPointerDown={onCropDown}
+            onPointerMove={onCropMove}
+            onPointerUp={onCropEnd}
+            onPointerCancel={onCropEnd}
+          />
+          {cropMode && (
+            <p className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/65 px-3 py-1 text-xs whitespace-nowrap text-white">
+              Drag to move · Pinch to zoom
+            </p>
+          )}
           {status === 'loading' && (
             <p role="status" className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="size-5 animate-spin" /> Loading photo…
@@ -358,14 +426,30 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
                 </Select>
               </div>
 
-              <AdjustmentPicker
-                label="Choose a crop adjustment"
-                items={cropItems}
-                active={picked.crop}
-                onActiveChange={(id) => setPicked((p) => ({ ...p, crop: id }))}
-                onChange={changeCrop}
-                onReset={resetCrop}
-              />
+              {touch ? (
+                <div className="grid gap-1">
+                  <p className="text-xs text-muted-foreground">Drag the photo to move it. Pinch with two fingers to resize.</p>
+                  <SliderRow
+                    label="Straighten"
+                    value={edits.straighten}
+                    min={-45}
+                    max={45}
+                    step={0.5}
+                    format={(v) => `${v}°`}
+                    onChange={(v) => change({ straighten: v }, 'straighten')}
+                    onReset={() => change({ straighten: 0 })}
+                  />
+                </div>
+              ) : (
+                <AdjustmentPicker
+                  label="Choose a crop adjustment"
+                  items={cropItems}
+                  active={picked.crop}
+                  onActiveChange={(id) => setPicked((p) => ({ ...p, crop: id }))}
+                  onChange={changeCrop}
+                  onReset={resetCrop}
+                />
+              )}
 
               <div className="flex items-center gap-2">
                 <Button
