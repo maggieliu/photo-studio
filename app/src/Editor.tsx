@@ -17,10 +17,11 @@ import {
   Wand2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Slider } from '@/components/ui/slider'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
+import { AdjustmentPicker } from './components/AdjustmentPicker'
+import { SliderRow } from './components/SliderRow'
 import { decodeForEditing } from './decode'
 import {
   applyPreset,
@@ -33,6 +34,7 @@ import {
   SLIDERS,
   type EditSettings,
   type SliderDef,
+  type SliderKey,
 } from './edits'
 import { createHistory, push, redo, undo } from './history'
 import { THUMB_SIZE } from './imageMeta'
@@ -61,45 +63,6 @@ type Props = {
   onNext?: () => void
 }
 
-type SliderRowProps = {
-  label: string
-  value: number
-  min: number
-  max: number
-  step?: number
-  /** The value the reset button restores; the button only shows when it differs. */
-  resetValue?: number
-  format?: (v: number) => string
-  onChange: (v: number) => void
-  onReset: () => void
-}
-
-function SliderRow({ label, value, min, max, step = 1, resetValue = 0, format, onChange, onReset }: SliderRowProps) {
-  return (
-    <div className="grid gap-0.5 py-1">
-      <div className="flex items-center gap-2">
-        <span className="flex-1 text-sm font-medium">{label}</span>
-        <output className="min-w-10 text-right text-sm tabular-nums text-muted-foreground">{format ? format(value) : value}</output>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn('size-8', value === resetValue && 'invisible')}
-          aria-label={`Reset ${label}`}
-          onClick={onReset}
-          // Stays in the layout when hidden, so the row does not jump.
-          tabIndex={value === resetValue ? -1 : 0}
-        >
-          <RotateCcw className="size-4" />
-        </Button>
-      </div>
-      <Slider aria-label={label} min={min} max={max} step={step} value={[value]} onValueChange={([v]) => onChange(v)} />
-    </div>
-  )
-}
-
-const toggleItem =
-  'h-11 px-3 text-sm data-[state=on]:border-ring data-[state=on]:bg-accent data-[state=on]:text-accent-foreground'
-
 export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, onNext }: Props) {
   const [hist, setHist] = useState(() => createHistory(normalizeEdits(photo.edits)))
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -107,6 +70,7 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
   const [tab, setTab] = useState<Tab>('light')
   const [comparing, setComparing] = useState(false)
   const [restoreTick, setRestoreTick] = useState(0)
+  const [picked, setPicked] = useState<{ light: SliderKey; color: SliderKey }>({ light: 'exposure', color: 'temperature' })
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<Renderer | null>(null)
@@ -323,7 +287,7 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
         )}
       </div>
 
-      <aside className="flex max-h-[44dvh] min-h-0 shrink-0 flex-col border-t bg-card md:max-h-none md:w-96 md:border-t-0 md:border-l md:pt-[max(1rem,env(safe-area-inset-top))]">
+      <aside className="flex max-h-[44dvh] min-h-60 shrink-0 flex-col md:min-h-0 border-t bg-card md:max-h-none md:w-96 md:border-t-0 md:border-l md:pt-[max(1rem,env(safe-area-inset-top))]">
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="min-h-0 flex-1 gap-0">
           <TabsList className="h-auto w-full shrink-0 rounded-none bg-transparent px-2 py-1">
             {TABS.map((t) => (
@@ -335,30 +299,57 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
           </TabsList>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <TabsContent value="light">{SLIDERS.filter((s) => s.group === 'light').map(slider)}</TabsContent>
-            <TabsContent value="color">{SLIDERS.filter((s) => s.group === 'color').map(slider)}</TabsContent>
+            {(['light', 'color'] as const).map((group) => (
+              <TabsContent key={group} value={group}>
+                <AdjustmentPicker
+                  sliders={SLIDERS.filter((s) => s.group === group)}
+                  edits={edits}
+                  active={picked[group]}
+                  onActiveChange={(key) => setPicked((p) => ({ ...p, [group]: key }))}
+                  onChange={(key, v) => change({ [key]: v }, key)}
+                  onReset={(key) => change({ [key]: 0 })}
+                />
+              </TabsContent>
+            ))}
             <TabsContent value="detail">{SLIDERS.filter((s) => s.group === 'detail').map(slider)}</TabsContent>
 
             <TabsContent value="crop" className="grid gap-3">
-              <ToggleGroup
-                type="single"
-                variant="outline"
-                value={activeAspect}
-                onValueChange={(label) => {
-                  const a = CROP_ASPECTS.find((x) => x.label === label)
-                  if (!a) return
-                  if (a.aspect === 0 && (!crop || crop.zoom === 1)) change({ crop: null })
-                  else setCrop({ aspect: a.aspect })
-                }}
-                aria-label="Crop shape"
-                className="flex-wrap"
-              >
-                {CROP_ASPECTS.map((a) => (
-                  <ToggleGroupItem key={a.label} value={a.label} className={toggleItem}>
-                    {a.label}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+              <div className="flex items-end gap-2">
+                <div className="grid flex-1 gap-1.5">
+                  <span className="text-sm font-medium">Aspect ratio</span>
+                  <Select
+                    value={activeAspect || 'Original'}
+                    onValueChange={(label) => {
+                      const a = CROP_ASPECTS.find((x) => x.label === label)
+                      if (!a) return
+                      if (a.aspect === 0 && (!crop || crop.zoom === 1)) change({ crop: null })
+                      else setCrop({ aspect: a.aspect })
+                    }}
+                  >
+                    <SelectTrigger className="h-11 w-full text-base" aria-label="Aspect ratio">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CROP_ASPECTS.map((a) => (
+                        <SelectItem key={a.label} value={a.label} className="min-h-10 text-base">
+                          {a.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-11"
+                  aria-label="Swap portrait and landscape"
+                  title="Swap portrait and landscape"
+                  disabled={!crop || crop.aspect <= 0}
+                  onClick={() => crop && setCrop({ aspect: 1 / crop.aspect })}
+                >
+                  <ArrowLeftRight />
+                </Button>
+              </div>
 
               <div>
                 <SliderRow
@@ -421,16 +412,8 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
                   <FlipHorizontal2 /> Flip
                 </Button>
                 <Button
-                  variant="outline"
-                  className="h-11 gap-2"
-                  disabled={!crop || crop.aspect <= 0}
-                  onClick={() => crop && setCrop({ aspect: 1 / crop.aspect })}
-                >
-                  <ArrowLeftRight /> Swap shape
-                </Button>
-                <Button
                   variant="ghost"
-                  className="col-span-2 h-11"
+                  className="h-11"
                   disabled={noFraming}
                   onClick={() => change({ crop: null, rotation: 0, flipH: false, straighten: 0 })}
                 >
