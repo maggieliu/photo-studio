@@ -295,50 +295,37 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
             </p>
           )}
 
-          {status === 'ready' && (
-            <>
-              <div className="absolute bottom-3 left-3 flex gap-1.5">
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="size-11 bg-black/55 text-white hover:bg-black/70"
-                  onClick={() => setHist(undo)}
-                  disabled={hist.past.length === 0}
-                  aria-label="Undo"
-                >
-                  <Undo2 />
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="size-11 bg-black/55 text-white hover:bg-black/70"
-                  onClick={() => setHist(redo)}
-                  disabled={hist.future.length === 0}
-                  aria-label="Redo"
-                >
-                  <Redo2 />
-                </Button>
-              </div>
-              <Button
-                variant="secondary"
-                className="absolute right-3 bottom-3 h-11 touch-none bg-black/55 text-sm text-white select-none hover:bg-black/70"
-                style={{ WebkitTouchCallout: 'none' }}
-                onPointerDown={() => setComparing(true)}
-                onPointerUp={() => setComparing(false)}
-                onPointerLeave={() => setComparing(false)}
-                onPointerCancel={() => setComparing(false)}
-                onContextMenu={(e) => e.preventDefault()}
-              >
-                Hold to compare
-              </Button>
-            </>
-          )}
         </div>
+
+        {status === 'ready' && (
+          <div className="flex items-center justify-between gap-2 px-3 pb-2">
+            <div className="flex gap-1.5">
+              <Button variant="outline" size="icon" className="size-11" onClick={() => setHist(undo)} disabled={hist.past.length === 0} aria-label="Undo">
+                <Undo2 />
+              </Button>
+              <Button variant="outline" size="icon" className="size-11" onClick={() => setHist(redo)} disabled={hist.future.length === 0} aria-label="Redo">
+                <Redo2 />
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              className="h-11 touch-none text-sm select-none"
+              style={{ WebkitTouchCallout: 'none' }}
+              onPointerDown={() => setComparing(true)}
+              onPointerUp={() => setComparing(false)}
+              onPointerLeave={() => setComparing(false)}
+              onPointerCancel={() => setComparing(false)}
+              onContextMenu={(e) => e.preventDefault()}
+            >
+              Hold to compare
+            </Button>
+          </div>
+        )}
       </div>
 
       <aside className="flex max-h-[44dvh] min-h-0 shrink-0 flex-col border-t bg-card md:max-h-none md:w-96 md:border-t-0 md:border-l md:pt-[max(1rem,env(safe-area-inset-top))]">
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="min-h-0 flex-1 gap-0">
-          <TabsList className="h-auto w-full shrink-0 rounded-none bg-transparent p-1">
+          <TabsList className="h-auto w-full shrink-0 rounded-none bg-transparent px-2 py-1">
             {TABS.map((t) => (
               <TabsTrigger key={t.id} value={t.id} className="h-auto flex-col gap-0.5 py-1.5 text-xs">
                 {t.icon}
