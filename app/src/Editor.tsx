@@ -287,9 +287,9 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
         )}
       </div>
 
-      <aside className="flex max-h-[44dvh] min-h-60 shrink-0 flex-col md:min-h-0 border-t bg-card md:max-h-none md:w-96 md:border-t-0 md:border-l md:pt-[max(1rem,env(safe-area-inset-top))]">
+      <aside className="flex max-h-[44dvh] min-h-60 shrink-0 flex-col md:min-h-0 border-t bg-card md:max-h-none md:w-96 md:border-t-0 md:border-l pt-1 md:pt-[max(1rem,env(safe-area-inset-top))]">
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="min-h-0 flex-1 gap-0">
-          <TabsList className="h-auto w-full shrink-0 rounded-none bg-transparent px-2 py-1">
+          <TabsList className="h-auto w-full shrink-0 rounded-none bg-transparent px-2 py-1 group-data-horizontal/tabs:h-auto">
             {TABS.map((t) => (
               <TabsTrigger key={t.id} value={t.id} className="h-auto flex-col gap-0.5 py-1.5 text-xs">
                 {t.icon}
