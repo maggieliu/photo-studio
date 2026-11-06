@@ -2,6 +2,21 @@ import exifr from 'exifr'
 import type { Catalog, PhotoRecord } from './catalog'
 import { fitWithin, summarizeExif, THUMB_SIZE } from './imageMeta'
 
+/** Turns a browser storage failure into something a person can act on. */
+export function describeStorageError(error: unknown, fileName: string): string {
+  const name = error instanceof Error ? error.name : ''
+  const message = error instanceof Error ? error.message : ''
+  if (name === 'QuotaExceededError' || /quota/i.test(message)) {
+    return `${fileName}: there is no space left on this device for this photo.`
+  }
+  // WebKit reports "Error preparing Blob/File data to be stored in object store" when it will not keep photo files,
+  // which is what Safari does in a Private tab.
+  if (/blob\/file data|object store/i.test(message) || name === 'DataCloneError' || name === 'UnknownError') {
+    return `${fileName}: your browser could not save this photo. If you are in a Private tab, open the site in a normal tab and try again.`
+  }
+  return `${fileName}: could not save this photo.`
+}
+
 async function makeThumbnail(bitmap: ImageBitmap): Promise<Blob> {
   const { width, height } = fitWithin(bitmap.width, bitmap.height, THUMB_SIZE)
   const canvas = document.createElement('canvas')
@@ -19,9 +34,18 @@ async function makeThumbnail(bitmap: ImageBitmap): Promise<Blob> {
 }
 
 export async function importPhoto(file: File, catalog: Catalog, albumId?: string): Promise<PhotoRecord> {
+  // Copy the file into memory first. Files from a phone's photo picker can be backed by a temporary file that
+  // disappears, which makes saving them fail later. A copy in memory is safe to decode and to store.
+  let data: Blob
+  try {
+    data = new Blob([await file.arrayBuffer()], { type: file.type })
+  } catch {
+    throw new Error(`${file.name}: could not read this file. If it is stored in iCloud, wait for it to download and try again.`)
+  }
+
   let bitmap: ImageBitmap
   try {
-    bitmap = await createImageBitmap(file)
+    bitmap = await createImageBitmap(data)
   } catch {
     throw new Error(`${file.name}: this browser can't decode this image type`)
   }
@@ -29,7 +53,7 @@ export async function importPhoto(file: File, catalog: Catalog, albumId?: string
   try {
     const exif = summarizeExif(
       await exifr
-        .parse(file, ['DateTimeOriginal', 'CreateDate', 'Make', 'Model'])
+        .parse(data, ['DateTimeOriginal', 'CreateDate', 'Make', 'Model'])
         .catch(() => undefined),
     )
     const photo: PhotoRecord = {
@@ -47,7 +71,11 @@ export async function importPhoto(file: File, catalog: Catalog, albumId?: string
       tags: [],
       albumIds: albumId ? [albumId] : [],
     }
-    await catalog.add(photo, file)
+    try {
+      await catalog.add(photo, data)
+    } catch (e) {
+      throw new Error(describeStorageError(e, file.name))
+    }
     return photo
   } finally {
     bitmap.close()

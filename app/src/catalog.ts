@@ -68,6 +68,30 @@ const normalize = (p: PhotoRecord): PhotoRecord => ({
   albumIds: p.albumIds ?? [],
 })
 
+/**
+ * Some browsers open a database but refuse to keep photo files in it (Safari in a
+ * Private tab does this). Tries to store a tiny file and reports whether it worked.
+ */
+export async function canStoreBlobs(): Promise<boolean> {
+  const name = 'photo-studio-probe'
+  try {
+    const db = await openDB(name, 1, {
+      upgrade(db) {
+        db.createObjectStore('probe')
+      },
+    })
+    try {
+      await db.put('probe', new Blob(['x'], { type: 'image/jpeg' }), 'file')
+      return true
+    } finally {
+      db.close()
+      indexedDB.deleteDatabase(name)
+    }
+  } catch {
+    return false
+  }
+}
+
 export async function openCatalog(name = 'photo-studio'): Promise<Catalog> {
   const db: IDBPDatabase<CatalogDB> = await openDB<CatalogDB>(name, 2, {
     upgrade(db, oldVersion) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { openCatalog, type AlbumRecord, type Catalog, type PhotoRecord } from './catalog'
+import { canStoreBlobs, openCatalog, type AlbumRecord, type Catalog, type PhotoRecord } from './catalog'
 import { isDefaultEdits, type EditSettings } from './edits'
 import { importPhotos } from './importPhoto'
 import { ThumbUrlCache } from './thumbUrls'
@@ -12,6 +12,8 @@ export function useLibrary() {
   const [photos, setPhotos] = useState<LibraryPhoto[]>([])
   const [albums, setAlbums] = useState<AlbumRecord[]>([])
   const [ready, setReady] = useState(false)
+  // False when the browser cannot keep photo files, for example in a Safari Private tab.
+  const [canSaveFiles, setCanSaveFiles] = useState(true)
   const [error, setError] = useState<string>()
   const [progress, setProgress] = useState<{ done: number; total: number }>()
   const [importErrors, setImportErrors] = useState<string[]>([])
@@ -36,6 +38,7 @@ export function useLibrary() {
         catalogRef.current = catalog
         await refresh()
         setReady(true)
+        canStoreBlobs().then((ok) => !cancelled && setCanSaveFiles(ok))
         // Ask the browser not to evict the catalog under storage pressure.
         navigator.storage?.persist?.().catch(() => {})
       })
@@ -134,6 +137,7 @@ export function useLibrary() {
     photos,
     albums,
     ready,
+    canSaveFiles,
     error,
     progress,
     importErrors,

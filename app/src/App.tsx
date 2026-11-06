@@ -191,6 +191,11 @@ function App() {
           />
 
           <div className="flex flex-1 flex-col px-4 py-4 md:px-8 md:py-6">
+            {ready && !lib.canSaveFiles && (
+              <p role="alert" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300">
+                This browser can’t save photos here. If you’re in a Private tab, open the site in a normal tab to keep your photos.
+              </p>
+            )}
             {error && (
               <p role="alert" className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                 {error}

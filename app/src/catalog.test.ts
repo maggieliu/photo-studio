@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { openDB } from 'idb'
-import { beforeEach, describe, expect, it } from 'vitest'
-import { openCatalog, type PhotoRecord } from './catalog'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { canStoreBlobs, openCatalog, type PhotoRecord } from './catalog'
 
 const photo = (id: string, addedAt: number): PhotoRecord => ({
   id,
@@ -103,5 +103,22 @@ describe('catalog', () => {
     expect(old).toMatchObject({ id: 'old', rating: 0, favorite: false, tags: [], albumIds: [] })
     expect(await c.listAlbums()).toEqual([])
     c.close()
+  })
+})
+
+describe('canStoreBlobs', () => {
+  it('is true when the browser keeps files in the database', async () => {
+    expect(await canStoreBlobs()).toBe(true)
+  })
+
+  it('is false when the browser refuses to store a file, as Safari does in a Private tab', async () => {
+    const put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(() => {
+      throw new DOMException('Error preparing Blob/File data to be stored in object store', 'DataCloneError')
+    })
+    try {
+      expect(await canStoreBlobs()).toBe(false)
+    } finally {
+      put.mockRestore()
+    }
   })
 })
