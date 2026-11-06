@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ArrowLeftRight,
   ChevronLeft,
   ChevronRight,
   Crop as CropIcon,
@@ -335,41 +334,28 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
             <TabsContent value="detail">{SLIDERS.filter((s) => s.group === 'detail').map(slider)}</TabsContent>
 
             <TabsContent value="crop" className="grid gap-3">
-              <div className="flex items-end gap-2">
-                <div className="grid flex-1 gap-1.5">
-                  <span className="text-sm font-medium">Aspect ratio</span>
-                  <Select
-                    value={activeAspect || 'Original'}
-                    onValueChange={(label) => {
-                      const a = CROP_ASPECTS.find((x) => x.label === label)
-                      if (!a) return
-                      if (a.aspect === 0 && (!crop || crop.zoom === 1)) change({ crop: null })
-                      else setCrop({ aspect: a.aspect })
-                    }}
-                  >
-                    <SelectTrigger className="h-11 w-full text-base" aria-label="Aspect ratio">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CROP_ASPECTS.map((a) => (
-                        <SelectItem key={a.label} value={a.label} className="min-h-10 text-base">
-                          {a.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-11"
-                  aria-label="Swap portrait and landscape"
-                  title="Swap portrait and landscape"
-                  disabled={!crop || crop.aspect <= 0}
-                  onClick={() => crop && setCrop({ aspect: 1 / crop.aspect })}
+              <div className="grid gap-1.5">
+                <span className="text-sm font-medium">Aspect ratio</span>
+                <Select
+                  value={activeAspect || 'Original'}
+                  onValueChange={(label) => {
+                    const a = CROP_ASPECTS.find((x) => x.label === label)
+                    if (!a) return
+                    if (a.aspect === 0 && (!crop || crop.zoom === 1)) change({ crop: null })
+                    else setCrop({ aspect: a.aspect })
+                  }}
                 >
-                  <ArrowLeftRight />
-                </Button>
+                  <SelectTrigger className="h-11 w-full text-base" aria-label="Aspect ratio">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CROP_ASPECTS.map((a) => (
+                      <SelectItem key={a.label} value={a.label} className="min-h-10 text-base">
+                        {a.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <AdjustmentPicker
@@ -381,24 +367,41 @@ export function Editor({ photo, getOriginal, onSave, onClose, onExport, onPrev, 
                 onReset={resetCrop}
               />
 
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="h-11 gap-2" onClick={() => setHist((h) => push(h, rotateBy(h.present, -1)))}>
-                  <RotateCcw /> Rotate left
-                </Button>
-                <Button variant="outline" className="h-11 gap-2" onClick={() => setHist((h) => push(h, rotateBy(h.present, 1)))}>
-                  <RotateCw /> Rotate right
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-11"
+                  aria-label="Rotate left"
+                  title="Rotate left"
+                  onClick={() => setHist((h) => push(h, rotateBy(h.present, -1)))}
+                >
+                  <RotateCcw />
                 </Button>
                 <Button
                   variant="outline"
-                  className={cn('h-11 gap-2', edits.flipH && 'border-ring bg-accent text-accent-foreground')}
+                  size="icon"
+                  className="size-11"
+                  aria-label="Rotate right"
+                  title="Rotate right"
+                  onClick={() => setHist((h) => push(h, rotateBy(h.present, 1)))}
+                >
+                  <RotateCw />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={cn('size-11', edits.flipH && 'border-ring bg-accent text-accent-foreground')}
+                  aria-label="Flip horizontally"
+                  title="Flip horizontally"
                   aria-pressed={edits.flipH}
                   onClick={() => change({ flipH: !edits.flipH })}
                 >
-                  <FlipHorizontal2 /> Flip
+                  <FlipHorizontal2 />
                 </Button>
                 <Button
                   variant="ghost"
-                  className="h-11"
+                  className="ml-auto h-11"
                   disabled={noFraming}
                   onClick={() => change({ crop: null, rotation: 0, flipH: false, straighten: 0 })}
                 >
