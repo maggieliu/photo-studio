@@ -19,6 +19,7 @@ import { formatBytes } from './imageMeta'
 import { markLandingSeen, readLandingSeen } from './landingState'
 import { makeOriginalThumb } from './preview'
 import { useLibrary } from './useLibrary'
+import { usePiAccount } from './usePiAccount'
 
 // The editor and export dialog are big and only needed on demand, so they load when first opened.
 const Editor = lazy(() => import('./Editor').then((m) => ({ default: m.Editor })))
@@ -26,6 +27,7 @@ const ExportDialog = lazy(() => import('./ExportDialog').then((m) => ({ default:
 
 function App() {
   const lib = useLibrary()
+  const pi = usePiAccount()
   const { photos, albums, ready, error, progress, importErrors } = lib
   const [view, setView] = useState<LibraryView>({ kind: 'all' })
   const [filter, setFilter] = useState<Filter>(emptyFilter)
@@ -149,6 +151,10 @@ function App() {
         setMenuOpen(false)
         setLandingRequested(true)
       }}
+      piUser={pi.user}
+      piBusy={pi.busy}
+      onPiSignIn={pi.signIn}
+      onPiSignOut={pi.signOut}
     />
   )
 

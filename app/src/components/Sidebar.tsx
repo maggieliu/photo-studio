@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import type { CapabilityResult } from '@/capabilities'
+import type { PiUser } from '@/pi'
 import { DeviceCheck } from './DeviceCheck'
+import { PiAccount } from './PiAccount'
 
 export type LibraryView = { kind: 'all' } | { kind: 'favorites' } | { kind: 'album'; id: string }
 
@@ -20,6 +22,10 @@ type Props = {
   onUpload: () => void
   /** Shows the welcome page. */
   onHome: () => void
+  piUser?: PiUser
+  piBusy: boolean
+  onPiSignIn: () => void
+  onPiSignOut: () => void
 }
 
 function NavItem({
@@ -58,7 +64,7 @@ function NavItem({
 }
 
 /** Library navigation: views, albums and upload. Used as a fixed column on desktop and inside a drawer on phones. */
-export function Sidebar({ view, albums, counts, storage, capabilities, disabled, onSelectView, onNewAlbum, onUpload, onHome }: Props) {
+export function Sidebar({ view, albums, counts, storage, capabilities, disabled, onSelectView, onNewAlbum, onUpload, onHome, piUser, piBusy, onPiSignIn, onPiSignOut }: Props) {
   return (
     <nav aria-label="Library" className="flex h-full flex-col gap-4 bg-sidebar p-4 text-sidebar-foreground">
       <button
@@ -114,7 +120,8 @@ export function Sidebar({ view, albums, counts, storage, capabilities, disabled,
         )}
       </ScrollArea>
 
-      <div className="grid gap-2">
+      <div className="grid gap-3">
+        <PiAccount user={piUser} busy={piBusy} onSignIn={onPiSignIn} onSignOut={onPiSignOut} />
         <Button size="lg" className="h-12 w-full text-base font-bold" onClick={onUpload} disabled={disabled}>
           <Plus className="size-5" /> Upload photos
         </Button>

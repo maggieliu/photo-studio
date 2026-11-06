@@ -33,7 +33,7 @@ A local-first web app for cataloging and editing photos, usable on phone and des
 | 3. Edit (done) | Photo view, shader pipeline, adjustment sliders, crop/rotate, undo/redo, before/after. |
 | 4. Export (done) | Single and batch export, resize and quality options. |
 | 4b. UI redesign | Apply the design canvas (see "UI redesign" below): dark theme, sidebar and drawer layout, grid, selection bar, landing, restyled editor and dialogs. |
-| 5. Pi integration | Register the app, Pi sign-in, sandbox testing. |
+| 5. Pi integration (in progress) | Pi sign-in (optional, built), sandbox testing, public address and verification, privacy and terms pages. See "Pi integration" below. |
 | 6. Polish | Mobile gestures, keyboard shortcuts, catalog backup, performance on large libraries. |
 | 7. Later | Presets, Pi payments, background removal, RAW via WebAssembly, cloud sync. |
 
@@ -65,6 +65,12 @@ Source: the "Photo Editor & Catalog" design canvas (https://claude.ai/artifact/G
 4. Viewer, editor and export dialog (done): a full-screen photo viewer (cached 1600px preview, swipe or arrow keys, stars and favorite, Edit/Export/Delete, an info panel for tags, albums, details and "Revert to original"); the editor on tabs with touch-friendly sliders and a side panel on desktop; the export dialog on the new components. The old `App.css` and `index.css` are deleted. A filmstrip in the viewer is not built yet.
 5. Styled dialogs and toasts (done): album names, deleting and reverting use dialogs, and errors use toasts. No browser prompts or confirms are left.
 6. Accessibility, contrast and phone/tablet/desktop checks.
+
+## Pi integration
+- **Pi app:** the existing Pi Developer Portal app, now named "Photo Studio" (id `682e692ba840db92f01a50ba`, Testnet). Portal: https://developers.minepi.com/devconsole/my-apps/682e692ba840db92f01a50ba
+- **Sandbox:** https://sandbox.minepi.com/mobile-app-ui/app/maggieapp loads the app's development address, which is set to the live GitHub Pages site (`https://maggieliu.github.io/photo-studio`). Every change has to be deployed before it shows in the sandbox. The site has no framing restrictions, so it can be embedded.
+- **Sign in with Pi (done, optional):** a button in the sidebar. Pi's script loads only when it is tapped. Only the `username` scope is requested. The username is shown on screen only (there is no server to verify it), and the access token is never stored. All Pi code is in `src/pi.ts`; `usePiAccount` and `PiAccount` use it.
+- **Still to do:** test sign-in in the sandbox and in the Pi Browser; write public privacy and terms pages (the app still points at localhost for both); set and verify the public frontend address (it still says `booktreasure.com`; the Pi API rejected a `github.io/photo-studio` folder address, so an address with its own root may be needed); payments are not planned.
 
 ## Risks and checks
 - **Pi Browser capabilities:** confirm WebGL2, OPFS and file picker work there before Phase 1.
