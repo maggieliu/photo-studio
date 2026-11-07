@@ -70,7 +70,9 @@ Source: the "Photo Editor & Catalog" design canvas (https://claude.ai/artifact/G
 - **Pi app:** the existing Pi Developer Portal app, now named "Photo Studio" (id `682e692ba840db92f01a50ba`, Testnet). Portal: https://developers.minepi.com/devconsole/my-apps/682e692ba840db92f01a50ba
 - **Sandbox:** https://sandbox.minepi.com/mobile-app-ui/app/maggieapp loads the app's development address, which is set to the live GitHub Pages site (`https://maggieliu.github.io/photo-studio`). Every change has to be deployed before it shows in the sandbox. The site has no framing restrictions, so it can be embedded.
 - **Sign in with Pi (done, optional):** a button in the sidebar. Pi's script loads only when it is tapped. Only the `username` scope is requested. The username is shown on screen only (there is no server to verify it), and the access token is never stored. All Pi code is in `src/pi.ts`; `usePiAccount` and `PiAccount` use it.
-- **Still to do:** test sign-in in the sandbox and in the Pi Browser; write public privacy and terms pages (the app still points at localhost for both); set and verify the public frontend address (it still says `booktreasure.com`; the Pi API rejected a `github.io/photo-studio` folder address, so an address with its own root may be needed); payments are not planned.
+- **Sign-in tested:** sign in and sign out work in the Pi Sandbox.
+- **Privacy and terms pages (written):** `app/public/privacy.html` and `terms.html`, served at `https://maggieliu.github.io/photo-studio/privacy.html` and `.../terms.html`, linked from the sidebar footer. Contact is the repository's issues page, so no personal email is published. After they are deployed, set them as the Pi app's privacy policy and terms of service addresses.
+- **Still to do:** set the Pi app's privacy and terms addresses to the pages above; set and verify the public frontend address (it still says `booktreasure.com`; the Pi API rejected a `github.io/photo-studio` folder address, so an address with its own root may be needed); payments are not planned.
 
 ## Risks and checks
 - **Pi Browser capabilities:** confirm WebGL2, OPFS and file picker work there before Phase 1.

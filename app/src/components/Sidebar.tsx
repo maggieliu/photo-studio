@@ -129,6 +129,16 @@ export function Sidebar({ view, albums, counts, storage, capabilities, disabled,
           <span className="min-w-0 truncate">{storage ?? ''}</span>
           <DeviceCheck capabilities={capabilities} />
         </div>
+        {/* Plain pages that live next to the app, so they work without it loading. */}
+        <p className="flex justify-center gap-3 text-xs text-muted-foreground">
+          <a href={`${import.meta.env.BASE_URL}privacy.html`} target="_blank" rel="noopener" className="underline-offset-2 hover:underline focus-visible:underline">
+            Privacy
+          </a>
+          <span aria-hidden>·</span>
+          <a href={`${import.meta.env.BASE_URL}terms.html`} target="_blank" rel="noopener" className="underline-offset-2 hover:underline focus-visible:underline">
+            Terms
+          </a>
+        </p>
       </div>
     </nav>
   )
