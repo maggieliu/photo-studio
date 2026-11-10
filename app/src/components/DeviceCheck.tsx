@@ -7,7 +7,7 @@ export function DeviceCheck({ capabilities }: { capabilities: CapabilityResult[]
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="link" size="xs" className="h-auto p-0 text-xs text-muted-foreground">
+        <Button variant="link" size="xs" className="h-auto min-h-11 px-2 text-xs text-muted-foreground">
           Device check
         </Button>
       </DialogTrigger>

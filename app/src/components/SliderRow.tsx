@@ -26,7 +26,7 @@ export function SliderRow({ label, value, min, max, step = 1, resetValue = 0, fo
         <Button
           variant="ghost"
           size="icon"
-          className={cn('size-8', value === resetValue && 'invisible')}
+          className={cn('-my-1.5 size-11', value === resetValue && 'invisible')}
           aria-label={`Reset ${label}`}
           onClick={onReset}
           // Stays in the layout when hidden, so the row does not jump.
