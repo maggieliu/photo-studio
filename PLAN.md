@@ -68,15 +68,15 @@ Source: the "Photo Editor & Catalog" design canvas (https://claude.ai/artifact/G
 
 ## Pi integration
 - **Pi app:** the existing Pi Developer Portal app, now named "Photo Studio" (id `682e692ba840db92f01a50ba`, Testnet). Portal: https://developers.minepi.com/devconsole/my-apps/682e692ba840db92f01a50ba
-- **Sandbox:** https://sandbox.minepi.com/mobile-app-ui/app/maggieapp loads the app's development address, which is set to the live GitHub Pages site (`https://maggieliu.github.io/photo-studio`). Every change has to be deployed before it shows in the sandbox. The site has no framing restrictions, so it can be embedded.
+- **Sandbox:** https://sandbox.minepi.com/mobile-app-ui/app/maggieapp loads the app's development address, which is set to the Firebase site (`https://photo-studio-63929.web.app`). Every change has to be deployed before it shows in the sandbox. The site has no framing restrictions, so it can be embedded.
 - **Sign in with Pi (done, optional):** a button in the sidebar. Pi's script loads only when it is tapped. Only the `username` scope is requested. The username is shown on screen only (there is no server to verify it), and the access token is never stored. All Pi code is in `src/pi.ts`; `usePiAccount` and `PiAccount` use it.
 - **Sign-in tested:** sign in and sign out work in the Pi Sandbox.
-- **Privacy and terms pages (written):** `app/public/privacy.html` and `terms.html`, served at `https://maggieliu.github.io/photo-studio/privacy.html` and `.../terms.html`, linked from the sidebar footer. Contact is the repository's issues page, so no personal email is published. After they are deployed, set them as the Pi app's privacy policy and terms of service addresses.
+- **Privacy and terms pages (written):** `app/public/privacy.html` and `terms.html`, served at `https://photo-studio-63929.web.app/privacy.html` and `/terms.html`, linked from the sidebar footer. Contact is the repository's issues page, so no personal email is published. After they are deployed, set them as the Pi app's privacy policy and terms of service addresses.
 - **Public address (done, verified):** the app is also hosted on Firebase Hosting at `https://photo-studio-63929.web.app`. This is the Pi app's public (frontend) address, and Pi has verified ownership. Pi created the Pi Browser address `https://maggieapp1797.pinet.com`. The first attempt with the GitHub Pages folder address failed; a root-level address was needed.
-- **Privacy and terms addresses (done):** set on the Pi app to the pages on GitHub Pages.
-- **How to deploy the Firebase site (manual):** `cd app && npm run build && npx firebase-tools deploy --only hosting --project photo-studio-63929`. This needs `firebase login` once on the computer. GitHub Pages still deploys automatically on every push.
+- **Privacy and terms addresses (done):** set on the Pi app to the pages on Firebase.
+- **How to deploy the Firebase site (manual):** `cd app && npm run build && npx firebase-tools deploy --only hosting --project photo-studio-63929`. This needs `firebase login` once on the computer. GitHub Pages was taken down (November 10, 2026); Firebase is the only host and deploys are manual.
 - **Validation key:** Pi checks `https://photo-studio-63929.web.app/validation-key.txt`. The file lives in `app/public/validation-key.txt`, is ignored by git, and must NOT be committed. On a fresh checkout, ask Pi's `verify_app_url_ownership` for the key again and recreate the file before building.
-- **Two sites, two storages:** photos are saved per website address, so the GitHub Pages site, the Firebase site and the Pi Browser address each have their own photo library.
+- **Two addresses, two storages:** photos are saved per website address, so the Firebase site and the Pi Browser address each have their own photo library.
 - **Still to do:** open the Pi Browser address and test the deployed app; finish the listing in the Pi Developer Portal (tagline, screenshots, category, review) at the app's listing page. Payments are not planned.
 
 ## Risks and checks
