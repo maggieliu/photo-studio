@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Pi ownership key: deployed with the site but never committed
+public/validation-key.txt
+
+# Firebase deploy cache
+.firebase/

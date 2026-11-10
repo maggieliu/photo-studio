@@ -72,7 +72,12 @@ Source: the "Photo Editor & Catalog" design canvas (https://claude.ai/artifact/G
 - **Sign in with Pi (done, optional):** a button in the sidebar. Pi's script loads only when it is tapped. Only the `username` scope is requested. The username is shown on screen only (there is no server to verify it), and the access token is never stored. All Pi code is in `src/pi.ts`; `usePiAccount` and `PiAccount` use it.
 - **Sign-in tested:** sign in and sign out work in the Pi Sandbox.
 - **Privacy and terms pages (written):** `app/public/privacy.html` and `terms.html`, served at `https://maggieliu.github.io/photo-studio/privacy.html` and `.../terms.html`, linked from the sidebar footer. Contact is the repository's issues page, so no personal email is published. After they are deployed, set them as the Pi app's privacy policy and terms of service addresses.
-- **Still to do:** set the Pi app's privacy and terms addresses to the pages above; set and verify the public frontend address (it still says `booktreasure.com`; the Pi API rejected a `github.io/photo-studio` folder address, so an address with its own root may be needed); payments are not planned.
+- **Public address (done, verified):** the app is also hosted on Firebase Hosting at `https://photo-studio-63929.web.app`. This is the Pi app's public (frontend) address, and Pi has verified ownership. Pi created the Pi Browser address `https://maggieapp1797.pinet.com`. The first attempt with the GitHub Pages folder address failed; a root-level address was needed.
+- **Privacy and terms addresses (done):** set on the Pi app to the pages on GitHub Pages.
+- **How to deploy the Firebase site (manual):** `cd app && npm run build && npx firebase-tools deploy --only hosting --project photo-studio-63929`. This needs `firebase login` once on the computer. GitHub Pages still deploys automatically on every push.
+- **Validation key:** Pi checks `https://photo-studio-63929.web.app/validation-key.txt`. The file lives in `app/public/validation-key.txt`, is ignored by git, and must NOT be committed. On a fresh checkout, ask Pi's `verify_app_url_ownership` for the key again and recreate the file before building.
+- **Two sites, two storages:** photos are saved per website address, so the GitHub Pages site, the Firebase site and the Pi Browser address each have their own photo library.
+- **Still to do:** open the Pi Browser address and test the deployed app; finish the listing in the Pi Developer Portal (tagline, screenshots, category, review) at the app's listing page. Payments are not planned.
 
 ## Risks and checks
 - **Pi Browser capabilities:** confirm WebGL2, OPFS and file picker work there before Phase 1.
