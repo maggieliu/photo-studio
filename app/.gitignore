@@ -28,3 +28,7 @@ public/validation-key.txt
 
 # Firebase deploy cache
 .firebase/
+
+# Pi ownership keys and the staging copy of the Mainnet site
+keys/
+dist-live/

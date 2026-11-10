@@ -87,3 +87,9 @@ Source: the "Photo Editor & Catalog" design canvas (https://claude.ai/artifact/G
 
 ## Next step
 Start Phase 0.
+
+### Mainnet (set up November 10, 2026)
+- **Mainnet app:** id `6af3a399a11e84891d0c27a3` (slug `photo-studio-1q9p`), linked to the Testnet app `682e692ba840db92f01a50ba`. Pi requires a different address for each, so it has its own Firebase site: `https://photo-studio-live-63929.web.app` (same project). Pi Browser address: `https://photostudioqp7095.pinet.com`. Ownership verified.
+- **Separate ownership keys:** each Pi app has its own `validation-key.txt`. Testnet's is `app/public/validation-key.txt`; Mainnet's is `app/keys/mainnet-validation-key.txt`. Both are git-ignored. Never commit or print them.
+- **Deploy:** `cd app && npm run deploy` publishes both sites; add `-- testnet` or `-- mainnet` for one. The Mainnet site is staged in `dist-live/` with its own key, using `firebase.mainnet.json`.
+- **Still to do for Mainnet:** KYC and the Mainnet wallet (settings page), then the listing (tagline, screenshots, category) and submit for review at the Mainnet app's listing page. Pi's rules say no sending users to outside sites, so replace the GitHub issues contact link on the privacy and terms pages.
