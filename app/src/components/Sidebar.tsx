@@ -1,4 +1,4 @@
-import { Aperture, CirclePlus, Heart, Images, Plus } from 'lucide-react'
+import { CirclePlus, Heart, Images, Plus } from 'lucide-react'
 import type { AlbumRecord } from '@/catalog'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -73,7 +73,7 @@ export function Sidebar({ view, albums, counts, storage, capabilities, disabled,
         aria-label="Photo Studio, go to the welcome page"
         className="-mx-1 flex min-h-11 items-center gap-2 rounded-lg px-3 text-left transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
       >
-        <Aperture className="size-6 text-sidebar-accent-foreground" aria-hidden />
+        <img src={`${import.meta.env.BASE_URL}icon-96.png`} alt="" width={32} height={32} className="size-8 rounded-lg" />
         <span className="text-xl font-black tracking-tight">Photo Studio</span>
       </button>
 
