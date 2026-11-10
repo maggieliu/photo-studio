@@ -33,7 +33,7 @@ type Props = {
 export function PhotoViewer(props: Props) {
   const { photo, position, onPrev, onNext } = props
   const [infoOpen, setInfoOpen] = useState(false)
-  const { url, failed } = usePreview(photo, { getOriginal: props.getOriginal, savePreview: props.savePreview })
+  const { url, failed, reason } = usePreview(photo, { getOriginal: props.getOriginal, savePreview: props.savePreview })
   const swipeStart = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
@@ -102,9 +102,10 @@ export function PhotoViewer(props: Props) {
             </div>
           )}
           {failed && (
-            <p role="alert" className="absolute bottom-3 rounded-md bg-background/90 px-3 py-1.5 text-sm text-destructive">
-              Could not load the full photo.
-            </p>
+            <div role="alert" className="absolute bottom-3 max-w-[90%] rounded-md bg-background/90 px-3 py-1.5 text-center">
+              <p className="text-sm text-destructive">Could not load the full photo.</p>
+              {reason && <p className="mt-0.5 text-xs break-words text-muted-foreground">{reason}</p>}
+            </div>
           )}
 
           {onPrev && (

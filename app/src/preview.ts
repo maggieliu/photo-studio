@@ -31,6 +31,12 @@ export async function makeOriginalThumb(original: Blob, photo: Source): Promise<
   return out.blob
 }
 
+/** A short technical reason, shown in small print so that a failure can be reported. */
+export function describePreviewError(error: unknown): string {
+  if (error instanceof Error) return error.message ? `${error.name}: ${error.message}` : error.name
+  return 'Unknown error'
+}
+
 /** Identifies a preview: it is only valid for the edits it was made with. */
 export const previewKey = (photo: { id: string; edits?: EditSettings }) => `${photo.id}:${JSON.stringify(photo.edits ?? null)}`
 

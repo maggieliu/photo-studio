@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { defaultEdits } from './edits'
-import { PreviewUrlCache, previewKey } from './preview'
+import { describePreviewError, PreviewUrlCache, previewKey } from './preview'
 import { swipeDirection } from './swipe'
 
 describe('previewKey', () => {
@@ -62,5 +62,17 @@ describe('swipeDirection', () => {
   it('ignores mostly vertical drags', () => {
     expect(swipeDirection(60, 80)).toBeUndefined()
     expect(swipeDirection(-70, 60)).toBeUndefined()
+  })
+})
+
+describe('describePreviewError', () => {
+  it('names the error and its message', () => {
+    expect(describePreviewError(new Error('boom'))).toBe('Error: boom')
+    expect(describePreviewError(new DOMException('no context', 'InvalidStateError'))).toBe('InvalidStateError: no context')
+  })
+
+  it('handles errors without a message and things that are not errors', () => {
+    expect(describePreviewError(new RangeError(''))).toBe('RangeError')
+    expect(describePreviewError('weird')).toBe('Unknown error')
   })
 })
